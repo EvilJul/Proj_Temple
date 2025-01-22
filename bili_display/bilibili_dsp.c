@@ -32,8 +32,8 @@
 static bool is_request       = false;   // 标记是否正在重新连接
 static int  request_attempts = 0;       // 重新连接尝试次数
 
-// extern const uint8_t bilibili_com_cer_start[] asm("_binary_certs_bilibili_com_cer_start");
-// extern const uint8_t bilibili_com_cer_end[] asm("_binary_certs_bilibili_com_cer_end");
+// extern const uint8_t bilibili_com_cer_start[] asm("_binary_bilibili_ca_cert_pem_start");
+// extern const uint8_t bilibili_com_cer_end[] asm("_binary_bilibili_ca_cert_pem_end");
 
 EventGroupHandle_t HTTP_CLIENT_EVENT;
 
