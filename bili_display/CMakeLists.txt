@@ -4,7 +4,8 @@
 # CMakeLists in this exact order for cmake to work correctly
 cmake_minimum_required(VERSION 3.16)
 
-set(EXTRA_COMPONENT_DIR componennts/ssd1306 componennts/wifi_v0.2 componennts/http_client_v0.1)
+set(EXTRA_COMPONENT_DIR componennts/ssd1306 componennts/wifi_v0.3 componennts/http_client_v0.2)
+# set(EXTRA_COMPONENT_DIR componennts/ssd1306 componennts/wifi_v0.2)
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(bilibili_dsp)
