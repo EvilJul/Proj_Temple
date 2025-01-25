@@ -1,0 +1,9 @@
+{
+  "C_Cpp.intelliSenseEngine": "default",
+  "idf.port": "/dev/tty.usbserial-0001",
+  "idf.flashType": "UART",
+  "files.associations": {
+    "idf_wifi.h": "c",
+    "u8g2_esp32_hal.h": "c"
+  }
+}

@@ -1,0 +1,254 @@
+#include "esp_err.h"
+#include "esp_http_client.h"
+#include "esp_log.h"
+#include "esp_netif.h"
+#include "esp_sntp.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/event_groups.h"
+#include "freertos/task.h"
+#include "idf_wifi.h"
+#include "ssd1306.h"
+#include "time.h"
+#include <cJSON.h>
+#include <http_client.h>
+#include <stdio.h>
+
+#define WIFI "WIFI"
+#define IP "IP_EVENT"
+// #define SSID "iPhone"
+// #define PASSWD "1234567890"
+#define SSID "202"
+#define PASSWD "Ti@n!99&"
+#define BILIBILI_API_URL "https://api.bilibili.com/x/web-interface/view?bvid=BV1USrzYTE7T"
+#define VIEW "View: "
+#define COIN "Coin: "
+#define REPLY "Reply: "
+#define LIKE "Like: "
+
+#define WIFI_GET_IP BIT7
+#define WIFI_LOSE_IP BIT8
+#define IS_NEED_UPDATE BIT9
+#define SSD1306_UPDATE BIT10
+#define HTTP_RESPONSE_DATA 1024 * 8
+
+typedef struct
+{
+    char* title;
+    int   view, reply, coin, like;
+} BILIBILI_t;
+
+static char*  response_buf;
+static size_t response_buf_len;
+BILIBILI_t    bili_buf;
+SSD1306_t     dev;
+
+EventGroupHandle_t CLIENT_EVENT, JOSN_EVENT, SSD1306_EVENT;
+TaskHandle_t       JSON_FORMAT = NULL, SSD1306_DISPLAY = NULL;
+
+// SNTP 初始化
+static void initialize_sntp(void* param)
+{
+    while (1) {
+        // 设置时区为中国标准时间 (UTC+8)
+        setenv("TZ", "CST-8", 1);
+        tzset();
+
+        sntp_setoperatingmode(SNTP_OPMODE_POLL);   // 设置为轮询模式
+        sntp_setservername(0, "pool.ntp.org");     // 使用 NTP 服务器
+        sntp_init();
+
+        // 等待时间同步完成
+        time_t    now         = 0;
+        struct tm timeinfo    = {0};
+        int       retry       = 0;
+        const int retry_count = 10;
+
+        while (timeinfo.tm_year < (2024 - 1900) && ++retry < retry_count) {
+            ESP_LOGI("SNTP", "Waiting for system time to be set... (%d/%d)", retry, retry_count);
+            vTaskDelay(2000 / portTICK_PERIOD_MS);
+            time(&now);
+            localtime_r(&now, &timeinfo);
+        }
+
+        if (retry == retry_count) {
+            ESP_LOGE("SNTP", "Failed to get time from SNTP server!");
+        }
+        else {
+            ESP_LOGI("SNTP", "Time synchronized successfully!");
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(1000 * 60 * 30));
+    }
+}
+
+static void run_on_event(esp_event_base_t event_base, int32_t event_id,
+                         esp_event_handler_t event_handler, void* event_handler_arg)
+{
+    switch (event_id) {
+    case IP_EVENT_STA_GOT_IP:
+        ESP_LOGI(IP, "已成功获取到ip");
+        xEventGroupSetBits(CLIENT_EVENT, WIFI_GET_IP);
+        break;
+
+    case IP_EVENT_STA_LOST_IP:
+        ESP_LOGI(IP, "获取ip失败！");
+        xEventGroupSetBits(CLIENT_EVENT, WIFI_LOSE_IP);
+        break;
+    };
+}
+
+void ssd1306_display_func(void* pdParam)
+{
+    char      view_str[20], reply_str[20], coin_str[20], like_str[20], time_str[50];
+    time_t    now;
+    struct tm timeinfo;
+    ssd1306_clear_screen(&dev, false);
+    ssd1306_display_text(&dev, 0, "Loading data...", strlen("Loading data..."), false);
+
+    vTaskDelay(pdMS_TO_TICKS(1000));
+    ssd1306_clear_line(&dev, 0, false);
+    ssd1306_display_text(&dev, 0, "Updae data...", strlen("Updae data..."), false);
+
+    time(&now);
+    localtime_r(&now, &timeinfo);
+    strftime(time_str, sizeof(time_str), "%Y/%m/%d %H:%M:%S", &timeinfo);
+    // ESP_LOGE("PRINT", "%s\n", time_str);
+    sprintf(view_str, "%s%d", VIEW, bili_buf.view);
+    sprintf(reply_str, "%s%d", REPLY, bili_buf.reply);
+    sprintf(coin_str, "%s%d", COIN, bili_buf.coin);
+    sprintf(like_str, "%s%d", LIKE, bili_buf.like);
+
+    ssd1306_clear_screen(&dev, false);
+    ssd1306_display_text(&dev, 0, "BILIBILI: DACHAI", strlen("BILIBILI: DACHAI"), false);
+    ssd1306_display_text(&dev, 1, time_str, strlen(time_str), false);
+    ssd1306_display_text(&dev, 2, bili_buf.title, strlen(bili_buf.title), false);
+    ssd1306_display_text(&dev, 3, view_str, strlen(view_str), false);
+    ssd1306_display_text(&dev, 4, like_str, strlen(like_str), false);
+    ssd1306_display_text(&dev, 5, reply_str, strlen(reply_str), false);
+    ssd1306_display_text(&dev, 6, coin_str, strlen(coin_str), false);
+    ssd1306_display_text(&dev, 7, "===================", strlen("==================="), false);
+
+    while (1) {
+        xEventGroupWaitBits(SSD1306_EVENT, SSD1306_UPDATE, pdTRUE, pdTRUE, portMAX_DELAY);
+        ssd1306_clear_line(&dev, 0, false);
+        ssd1306_display_text(&dev, 0, "Updae data...", strlen("Updae data..."), false);
+
+        time(&now);
+        localtime_r(&now, &timeinfo);
+        strftime(time_str, sizeof(time_str), "%Y/%m/%d %H:%M:%S", &timeinfo);
+        sprintf(view_str, "%s%d", VIEW, bili_buf.view);
+        sprintf(reply_str, "%s%d", REPLY, bili_buf.reply);
+        sprintf(coin_str, "%s%d", COIN, bili_buf.coin);
+        sprintf(like_str, "%s%d", LIKE, bili_buf.like);
+        vTaskDelay(pdMS_TO_TICKS(500));
+
+        ssd1306_clear_screen(&dev, false);
+        ssd1306_display_text(&dev, 0, "BILIBILI: DACHAI", strlen("BILIBILI: DACHAI"), false);
+        ssd1306_display_text(&dev, 1, time_str, strlen(time_str), false);
+        ssd1306_display_text(&dev, 2, bili_buf.title, strlen(bili_buf.title), false);
+        ssd1306_display_text(&dev, 3, view_str, strlen(view_str), false);
+        ssd1306_display_text(&dev, 4, like_str, strlen(like_str), false);
+        ssd1306_display_text(&dev, 5, reply_str, strlen(reply_str), false);
+        ssd1306_display_text(&dev, 6, coin_str, strlen(coin_str), false);
+        ssd1306_display_text(&dev, 7, "===================", strlen("==================="), false);
+    }
+}
+
+static void json_format(void* response_data)
+{
+    while (1) {
+        xEventGroupWaitBits(JOSN_EVENT, IS_NEED_UPDATE, pdTRUE, pdTRUE, portMAX_DELAY);
+        memset(&bili_buf, 0, sizeof(bili_buf));
+
+        cJSON* char_to_json = cJSON_Parse(*(char**)response_data);
+        if (char_to_json == NULL)
+            ESP_LOGE("CJSON", "Error parsing JSON: %s\n", cJSON_GetErrorPtr());
+        // else
+        // {
+        //     ESP_LOGE("JSON_DATA", "%s\n", cJSON_Print(char_to_json));
+        //     free(cJSON_Print(char_to_json));
+        // }
+
+        cJSON* data = cJSON_GetObjectItem(char_to_json, "data");
+        if (data != NULL) {
+            cJSON* _title = cJSON_GetObjectItem(data, "title");
+            if (_title != NULL) bili_buf.title = cJSON_Print(_title);
+
+            cJSON* _stat = cJSON_GetObjectItem(data, "stat");
+            if (_stat != NULL) {
+                bili_buf.coin  = cJSON_GetNumberValue(cJSON_GetObjectItem(_stat, "coin"));
+                bili_buf.like  = cJSON_GetNumberValue(cJSON_GetObjectItem(_stat, "like"));
+                bili_buf.reply = cJSON_GetNumberValue(cJSON_GetObjectItem(_stat, "reply"));
+                bili_buf.view  = cJSON_GetNumberValue(cJSON_GetObjectItem(_stat, "view"));
+                xEventGroupSetBits(SSD1306_EVENT, SSD1306_UPDATE);
+            }
+
+            if (SSD1306_DISPLAY == NULL)
+                xTaskCreate(ssd1306_display_func,
+                            "ssd1306_display_func",
+                            1024 * 8,
+                            NULL,
+                            1,
+                            &SSD1306_DISPLAY);
+
+            // ESP_LOGE("OUT_DATA", "TITLE:%s | COIN:%d | LIKE:%d | REPLY:%d | VIEW:%d ",
+            // bili_buf.title, bili_buf.coin, bili_buf.like, bili_buf.reply, bili_buf.view);
+        }
+        else
+            ESP_LOGE("CJSON", "Error parsing JSON: %s\n", cJSON_GetErrorPtr());
+
+        cJSON_Delete(char_to_json);
+    }
+}
+
+void app_main(void)
+{
+    esp_err_t err;
+    CLIENT_EVENT  = xEventGroupCreate();
+    JOSN_EVENT    = xEventGroupCreate();
+    SSD1306_EVENT = xEventGroupCreate();
+    esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, run_on_event, NULL);
+
+    i2c_master_init(&dev, GPIO_NUM_13, GPIO_NUM_18, -1);
+    ssd1306_init(&dev, 128, 64);
+    ssd1306_clear_screen(&dev, false);
+    ssd1306_contrast(&dev, 0xff);
+    ssd1306_display_text_x3(&dev, 2, "Tian", strlen("Tian"), false);
+
+    nvs_init();
+    wifi_sta_model_init();
+    err = wifi_connect(SSID, PASSWD, GPIO_NUM_2);
+    if (err != ESP_OK) {
+        ESP_LOGE("INFO", "我完蛋了！");
+        return;
+    }
+    xEventGroupWaitBits(CLIENT_EVENT, WIFI_GET_IP, pdTRUE, pdTRUE, pdMS_TO_TICKS(10000));
+    xTaskCreate(initialize_sntp, "initiallize_sntp", 1024 * 4, NULL, 1, NULL);
+
+    while (1) {
+        TickType_t tick = xTaskGetTickCount();
+
+        // 初始化数据缓存区
+        response_buf     = malloc(1);
+        response_buf[0]  = '\0';
+        response_buf_len = 0;
+
+        char* temp = http_client_init_get(BILIBILI_API_URL);
+        if (temp != NULL) {
+            // 动态调整缓冲区大小
+            response_buf = realloc(response_buf, response_buf_len + strlen(temp) + 1);
+            memcpy(response_buf + response_buf_len, temp, strlen(temp));
+            response_buf_len += strlen(temp);
+            response_buf[response_buf_len] = '\0';
+
+            if (JSON_FORMAT == NULL)
+                xTaskCreate(
+                    json_format, "json_format", 1024 * 8, (void*)&response_buf, 1, &JSON_FORMAT);
+            xEventGroupSetBits(JOSN_EVENT, IS_NEED_UPDATE);
+        }
+        else
+            ESP_LOGE("CLIENT_MSG", "HTTPS RESPONSE ERROR!");
+
+        vTaskDelayUntil(&tick, pdMS_TO_TICKS(1000 * 60 * 5));
+    }
+}

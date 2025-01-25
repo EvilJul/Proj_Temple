@@ -1,0 +1,206 @@
+#include "cJSON.h"
+#include "driver/gpio.h"
+#include "esp_err.h"
+#include "esp_log.h"
+#include "esp_wifi.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/event_groups.h"
+#include "freertos/queue.h"
+#include "freertos/task.h"
+#include "http_client.h"
+#include "idf_wifi.h"
+#include "u8g2.h"
+#include "u8g2_esp32_hal.h"
+#include <stdio.h>
+#include <string.h>
+
+
+void        wifi_init_and_connect(void* param);   // 初始化Wi-Fi并连接
+static void run_on_event(esp_event_base_t event_base, int32_t event_id,
+                         esp_event_handler_t event_handler,
+                         void*               event_handler_arg);   // 注册事件
+void        get_bivDetail_data(void* param);         // 获取单个视频关键数据
+void        responseData(void* url);                 // 获取response数据
+
+#define SDA_GPIO GPIO_NUM_13
+#define SCL_GPIO GPIO_NUM_18
+
+// #define SSID "iPhone"
+// #define PASSWD "1234567890"
+#define SSID "202"
+#define PASSWD "Ti@n!99&"
+#define BILIBILI_VID_API "https://api.bilibili.com/x/web-interface/view?bvid="
+#define VIEW "View: "
+#define COIN "Coin: "
+#define REPLY "Reply: "
+#define LIKE "Like: "
+
+#define WIFI_GET_IP BIT0
+#define WIFI_LOSE_IP BIT1
+#define IS_NEED_UPDATE BIT2
+#define U8G2_UPDATE BIT3
+#define GET_BVID BIT4
+#define GET_BVDATA BIT5
+
+#define WIFI_TAG "WIFI_INIT&CONNECT"
+
+TaskHandle_t       WIFI_INIT_CONNECT = NULL, GET_PROCESS_DATA = NULL, BIVDETAIL_DATA = NULL;
+EventGroupHandle_t CLIENT_EVENT, RESPONSE_DATA, U8G2_EVENT;
+
+typedef struct
+{
+    char* title;
+    int   view, reply, coin, like;
+} BILIBILI_t;
+
+char*  response_data;
+int    response_data_len;
+u8g2_t u8g2;
+
+static void run_on_event(esp_event_base_t event_base, int32_t event_id,
+                         esp_event_handler_t event_handler, void* event_handler_arg)
+{
+    switch (event_id) {
+    case IP_EVENT_STA_GOT_IP:
+        ESP_LOGI("IP", "已成功获取到ip");
+        xEventGroupSetBits(CLIENT_EVENT, WIFI_GET_IP);
+        break;
+
+    case IP_EVENT_STA_LOST_IP:
+        ESP_LOGI("IP", "获取ip失败！");
+        xEventGroupSetBits(CLIENT_EVENT, WIFI_LOSE_IP);
+        break;
+    };
+}
+
+
+
+void get_bivDetail_data(void* param)
+{
+    BILIBILI_t bili_buf;
+    while (1) {
+        // xEventGroupWaitBits(JOSN_EVENT, IS_NEED_UPDATE, pdTRUE, pdTRUE, portMAX_DELAY);
+        memset(&bili_buf, 0, sizeof(bili_buf));
+
+        cJSON* char_to_json = cJSON_Parse(*(char**)response_data);
+        if (char_to_json == NULL)
+            ESP_LOGE("CJSON", "Error parsing JSON: %s\n", cJSON_GetErrorPtr());
+        // else
+        // {
+        //     ESP_LOGE("JSON_DATA", "%s\n", cJSON_Print(char_to_json));
+        //     free(cJSON_Print(char_to_json));
+        // }
+
+        cJSON* data = cJSON_GetObjectItem(char_to_json, "data");
+        if (data != NULL) {
+            cJSON* _title = cJSON_GetObjectItem(data, "title");
+            if (_title != NULL) bili_buf.title = cJSON_Print(_title);
+
+            cJSON* _stat = cJSON_GetObjectItem(data, "stat");
+            if (_stat != NULL) {
+                bili_buf.coin  = cJSON_GetNumberValue(cJSON_GetObjectItem(_stat, "coin"));
+                bili_buf.like  = cJSON_GetNumberValue(cJSON_GetObjectItem(_stat, "like"));
+                bili_buf.reply = cJSON_GetNumberValue(cJSON_GetObjectItem(_stat, "reply"));
+                bili_buf.view  = cJSON_GetNumberValue(cJSON_GetObjectItem(_stat, "view"));
+
+                xEventGroupSetBits(U8G2_EVENT, U8G2_UPDATE);
+            }
+            else
+                return;
+
+            // if (SSD1306_DISPLAY == NULL)
+            //     xTaskCreate(ssd1306_display_func,
+            //                 "ssd1306_display_func",
+            //                 1024 * 8,
+            //                 NULL,
+            //                 1,
+            //                 &SSD1306_DISPLAY);
+
+            // ESP_LOGE("OUT_DATA", "TITLE:%s | COIN:%d | LIKE:%d | REPLY:%d | VIEW:%d ",
+            // bili_buf.title, bili_buf.coin, bili_buf.like, bili_buf.reply, bili_buf.view);
+        }
+        else
+            ESP_LOGE("CJSON", "Error parsing JSON: %s\n", cJSON_GetErrorPtr());
+
+        cJSON_Delete(char_to_json);
+    }
+}
+
+void wifi_init_and_connect(void* param)
+{
+    esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, run_on_event, NULL);
+    wifi_sta_model_init();
+    esp_err_t err = wifi_connect(SSID, PASSWD, GPIO_NUM_2);
+    if (err != ESP_OK) ESP_LOGE(WIFI_TAG, "WIFI连接失败！");
+    while (1) {
+        TickType_t currentTime = xTaskGetTickCount();
+        sntp_to_init();
+        sntp_updateTime();
+        vTaskDelayUntil(&currentTime, pdMS_TO_TICKS(1000 * 60 * 30));
+    }
+}
+
+void responseData(void* url)
+{
+    while (1) {
+        TickType_t currentTime = xTaskGetTickCount();
+
+        response_data     = malloc(1);
+        response_data[0]  = '\0';
+        response_data_len = 0;
+        char* temp        = http_client_init_get(*(char**)url);
+        if (temp != NULL) {
+            response_data = realloc(response_data, response_data + strlen(temp) + 1);
+            memcpy(response_data, temp, strlen(temp));
+            response_data_len += strlen(temp);
+            response_data[response_data_len] = '\0';
+
+            if (BIVDETAIL_DATA == NULL)
+                xTaskCreate(
+                    get_bivDetail_data, "get_bivDetail_data", 1024 * 8, NULL, 1, &BIVDETAIL_DATA);
+        }
+        else
+            ESP_LOGE("CLIENT_MSG", "HTTPS RESPONSE ERROR!");
+
+        vTaskDelayUntil(&currentTime, pdMS_TO_TICKS(1000 * 60 * 5));
+    }
+}
+
+void app_main(void)
+{
+    CLIENT_EVENT = xEventGroupCreate();
+    U8G2_EVENT   = xEventGroupCreate();
+
+    //  OLED 开机显示
+    u8g2_esp32_hal_t u8g2_esp32_hal = U8G2_ESP32_HAL_DEFAULT;
+    u8g2_esp32_hal.sda              = SDA_GPIO;
+    u8g2_esp32_hal.scl              = SCL_GPIO;
+    u8g2_esp32_hal_init(u8g2_esp32_hal);
+
+    u8g2_Setup_ssd1306_i2c_128x64_noname_f(
+        &u8g2, U8G2_R0, u8g2_esp32_i2c_byte_cb, u8g2_esp32_gpio_and_delay_cb);
+    // u8x8_SetI2CAddress(&u8g2.u8x8, 0x3C);
+    u8g2_InitDisplay(&u8g2);
+    u8g2_SetPowerSave(&u8g2, 0);   // wake up display
+    u8g2_ClearBuffer(&u8g2);
+    u8g2_DrawBox(&u8g2, 0, 26, 80, 6);
+    u8g2_DrawFrame(&u8g2, 0, 26, 100, 6);
+
+    u8g2_SetFont(&u8g2, u8g2_font_ncenB14_tr);
+    u8g2_DrawStr(&u8g2, 2, 17, "你好");
+    u8g2_SendBuffer(&u8g2);
+
+
+    // if (WIFI_INIT_CONNECT == NULL)
+    //     xTaskCreate(
+    //         wifi_init_and_connect, "wifi_init_and_connect", 1024 * 8, NULL, 1,
+    //         &WIFI_INIT_CONNECT);
+
+    // if (GET_PROCESS_DATA == NULL)
+    //     xTaskCreate(get_and_process_responseData,
+    //                 "get_and_process_responseData",
+    //                 1024 * 8,
+    //                 NULL,
+    //                 1,
+    //                 &GET_PROCESS_DATA);
+}
