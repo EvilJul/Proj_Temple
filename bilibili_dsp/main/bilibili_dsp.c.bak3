@@ -1,3 +1,10 @@
+/*
+    1、设置标志位，用于只有当sntp校准时间后进行屏幕显示
+    2、Wi-Fi重新连接失败后刷新屏幕提示连接失败
+    3、新建标志位位，用于检测Wi-Fi连接状态、时间更新状态、获取数据状态只要其中任
+        一在规定时间内失败结束所有进程，并在显示屏上显示手动重制
+*/
+
 #include "esp_err.h"
 #include "esp_http_client.h"
 #include "esp_log.h"
@@ -19,7 +26,7 @@
 // #define PASSWD "1234567890"
 #define SSID "202"
 #define PASSWD "Ti@n!99&"
-#define BILIBILI_API_URL "https://api.bilibili.com/x/web-interface/view?bvid=BV1USrzYTE7T"
+#define BILIBILI_API_URL "https://api.bilibili.com/x/web-interface/view?bvid=BV17xfWYnENz"
 #define VIEW "View: "
 #define COIN "Coin: "
 #define REPLY "Reply: "
@@ -29,6 +36,7 @@
 #define WIFI_LOSE_IP BIT8
 #define IS_NEED_UPDATE BIT9
 #define SSD1306_UPDATE BIT10
+#define SNTP_UPDATE_TIME BIT11
 #define HTTP_RESPONSE_DATA 1024 * 8
 
 typedef struct
@@ -48,13 +56,14 @@ TaskHandle_t       JSON_FORMAT = NULL, SSD1306_DISPLAY = NULL;
 // SNTP 初始化
 static void initialize_sntp(void* param)
 {
-    while (1) {
-        // 设置时区为中国标准时间 (UTC+8)
-        setenv("TZ", "CST-8", 1);
-        tzset();
+    // 设置时区为中国标准时间 (UTC+8)
+    setenv("TZ", "CST-8", 1);
+    tzset();
+    sntp_setoperatingmode(SNTP_OPMODE_POLL);   // 设置为轮询模式
+    sntp_setservername(0, "pool.ntp.org");     // 使用 NTP 服务器
 
-        sntp_setoperatingmode(SNTP_OPMODE_POLL);   // 设置为轮询模式
-        sntp_setservername(0, "pool.ntp.org");     // 使用 NTP 服务器
+    while (1) {
+        esp_sntp_stop();
         sntp_init();
 
         // 等待时间同步完成
@@ -63,7 +72,7 @@ static void initialize_sntp(void* param)
         int       retry       = 0;
         const int retry_count = 10;
 
-        while (timeinfo.tm_year < (2024 - 1900) && ++retry < retry_count) {
+        while (timeinfo.tm_year < (2025 - 1900) && ++retry <= retry_count) {
             ESP_LOGI("SNTP", "Waiting for system time to be set... (%d/%d)", retry, retry_count);
             vTaskDelay(2000 / portTICK_PERIOD_MS);
             time(&now);
@@ -75,6 +84,7 @@ static void initialize_sntp(void* param)
         }
         else {
             ESP_LOGI("SNTP", "Time synchronized successfully!");
+            xEventGroupSetBits(SSD1306_EVENT, SNTP_UPDATE_TIME);
         }
 
         vTaskDelay(pdMS_TO_TICKS(1000 * 60 * 30));
@@ -104,8 +114,8 @@ void ssd1306_display_func(void* pdParam)
     struct tm timeinfo;
     ssd1306_clear_screen(&dev, false);
     ssd1306_display_text(&dev, 0, "Loading data...", strlen("Loading data..."), false);
+    xEventGroupWaitBits(SSD1306_EVENT, SNTP_UPDATE_TIME, pdTRUE, pdTRUE, portMAX_DELAY);
 
-    vTaskDelay(pdMS_TO_TICKS(1000));
     ssd1306_clear_line(&dev, 0, false);
     ssd1306_display_text(&dev, 0, "Updae data...", strlen("Updae data..."), false);
 
