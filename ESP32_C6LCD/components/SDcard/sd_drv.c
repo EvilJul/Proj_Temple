@@ -12,7 +12,7 @@
 static uint32_t sd_size;
 
 sdspi_dev_handle_t SD_DEV_HANDLE;
-sdmmc_card_t*      SDCARD;
+sdmmc_card_t *SDCARD;
 
 /**
  * @brief 配置SPI
@@ -27,35 +27,36 @@ esp_err_t init_sd_spi()
     sdmmc_host_t sdmmc_host_ = SDSPI_HOST_DEFAULT();
     sdmmc_host_.max_freq_khz = SDMMC_FREQ_HIGHSPEED;
 
-    // // 配置SPI总线
-    ESP_LOGI("SPI_INFO", "----->配置SPI总线<------");
-    spi_bus_config_t bus_cfg = {
-        .sclk_io_num     = GPIO_NUM_7,
-        .mosi_io_num     = GPIO_NUM_6,
-        .miso_io_num     = GPIO_NUM_5,
-        .quadwp_io_num   = -1,
-        .quadhd_io_num   = -1,
-        .max_transfer_sz = 4000,
-    };
-    err = spi_bus_initialize(SPI2_HOST, &bus_cfg, SPI_DMA_CH_AUTO);
-    if (err != ESP_OK) {
-        ESP_LOGE("SPI_INFO", "初始化LCD SPI总线失败！");
-        return err;
-    }
+    // // // 配置SPI总线
+    // ESP_LOGI("SPI_INFO", "----->配置SPI总线<------");
+    // spi_bus_config_t bus_cfg = {
+    //     .sclk_io_num     = GPIO_NUM_7,
+    //     .mosi_io_num     = GPIO_NUM_6,
+    //     .miso_io_num     = GPIO_NUM_5,
+    //     .quadwp_io_num   = -1,
+    //     .quadhd_io_num   = -1,
+    //     .max_transfer_sz = 4000,
+    // };
+    // err = spi_bus_initialize(SPI2_HOST, &bus_cfg, SPI_DMA_CH_AUTO);
+    // if (err != ESP_OK) {
+    //     ESP_LOGE("SPI_INFO", "初始化LCD SPI总线失败！");
+    //     return err;
+    // }
 
     sdspi_device_config_t sdspi_dev_cfg = SDSPI_DEVICE_CONFIG_DEFAULT();
-    sdspi_dev_cfg.gpio_cs               = SD_CS;
-    sdspi_dev_cfg.host_id               = sdmmc_host_.slot;
+    sdspi_dev_cfg.gpio_cs = SD_CS;
+    sdspi_dev_cfg.host_id = sdmmc_host_.slot;
 
     // 挂载sd卡
     ESP_LOGI("SD_INFO", "----->进行挂载SD卡<------");
     esp_vfs_fat_sdmmc_mount_config_t mount_cfg = {
-        .max_files              = 5,
+        .max_files = 5,
         .format_if_mount_failed = false,
-        .allocation_unit_size   = 16 * 1024,
+        .allocation_unit_size = 16 * 1024,
     };
     err = esp_vfs_fat_sdspi_mount(MOUNT_POINT, &sdmmc_host_, &sdspi_dev_cfg, &mount_cfg, &SDCARD);
-    if (err != ESP_OK) {
+    if (err != ESP_OK)
+    {
         ESP_LOGE("SD_INFO", "SD挂载失败！");
         return err;
     }
