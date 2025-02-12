@@ -40,7 +40,7 @@ const int         retry_count = 10;
 static int        wifi_rssi;
 static char       temp_rssi[10];
 static lv_style_t splash_font_style;
-// static lv_style_t fps_font_style;
+static lv_style_t name_font_style;
 static lv_style_t top_font;
 static char       time_buf[20];
 static char*      temp;
@@ -420,7 +420,6 @@ HOMEPAGE_ARC_HEAD homePagee()
     */
     static lv_coord_t col_dsc[] = {172, LV_GRID_TEMPLATE_LAST};
     static lv_coord_t row_dsc[] = {40, 180, 80, LV_GRID_TEMPLATE_LAST};
-
     lv_obj_set_layout(grid, LV_LAYOUT_GRID);             // 将网格对象的布局设置为网格布局。
     lv_obj_set_size(grid, LV_HOR_RES, LV_VER_RES);       // 设置网格对象的大小为屏幕的宽度和高度
     lv_obj_set_grid_dsc_array(grid, col_dsc, row_dsc);   // 将之前定义的列和行描述符应用到网格对象上
@@ -461,8 +460,75 @@ HOMEPAGE_ARC_HEAD homePagee()
     // Media
     lv_obj_t* Media = lv_obj_create(grid);
     lv_obj_set_grid_cell(Media, LV_GRID_ALIGN_STRETCH, 0, 1, LV_GRID_ALIGN_STRETCH, 1, 1);
-    lv_obj_set_style_bg_color(Media, lv_palette_main(LV_PALETTE_BLUE_GREY), 0);
     lv_obj_set_style_pad_all(Media, 0, 0);
+    lv_obj_add_style(Media, &style_table, 0);
+    // 制表
+    static lv_coord_t media_col[] = {168, LV_GRID_TEMPLATE_LAST};       // 列
+    static lv_coord_t media_row[] = {30, 140, LV_GRID_TEMPLATE_LAST};   // 行
+    lv_obj_set_layout(Media, LV_LAYOUT_GRID);
+    lv_obj_set_grid_dsc_array(Media, media_col, media_row);
+    lv_obj_set_size(Media, 170, 170);
+    // ID
+    lv_obj_t* bili_name_scr = lv_obj_create(Media);
+    lv_obj_set_grid_cell(bili_name_scr, LV_GRID_ALIGN_STRETCH, 0, 1, LV_GRID_ALIGN_STRETCH, 0, 1);
+    lv_obj_set_style_pad_all(bili_name_scr, 0, 0);
+    lv_obj_set_style_bg_color(bili_name_scr, lv_palette_main(LV_PALETTE_ORANGE), 0);
+    //-ID STYLE
+    // lv_style_init(&name_font_style);
+    // lv_style_set_text_color(&name_font_style, lv_palette_main(LV_PALETTE_RED));
+    // lv_style_set_text_opa(&name_font_style, LV_OPA_30);
+    //-ID LABEL
+    lv_obj_t* name_label = lv_label_create(bili_name_scr);
+    lv_obj_align(name_label, LV_ALIGN_CENTER, 0, 0);
+    // lv_obj_add_style(name_label, &name_font_style, 0);
+    lv_label_set_text(name_label, "DA CHAI");
+    lv_obj_move_foreground(name_label);
+
+    // DATA
+    lv_obj_t* video_data = lv_obj_create(Media);
+    lv_obj_set_grid_cell(video_data, LV_GRID_ALIGN_STRETCH, 0, 1, LV_GRID_ALIGN_STRETCH, 1, 1);
+    lv_obj_set_style_pad_all(video_data, 0, 0);
+    lv_obj_set_style_bg_color(video_data, lv_palette_main(LV_PALETTE_CYAN), 0);
+    //-DATA TABLE
+    static lv_coord_t video_col[] = {82, 82, LV_GRID_TEMPLATE_LAST};
+    static lv_coord_t video_row[] = {68, 68, LV_GRID_TEMPLATE_LAST};
+    lv_obj_set_layout(video_data, LV_LAYOUT_GRID);
+    lv_obj_set_size(video_data, 166, 138);
+    lv_obj_set_grid_dsc_array(video_data, video_col, video_row);
+    lv_obj_set_style_pad_all(video_data, 0, 0);
+    lv_obj_set_style_pad_gap(video_data, 0, 0);
+    //--VIEW
+    lv_obj_t* view_scr = lv_obj_create(video_data);
+    lv_obj_set_grid_cell(view_scr, LV_GRID_ALIGN_STRETCH, 0, 1, LV_GRID_ALIGN_STRETCH, 0, 1);
+    lv_obj_set_style_pad_all(view_scr, 0, 0);
+    //---VIEW LVABEL
+    lv_obj_t* view_balel = lv_label_create(view_scr);
+    lv_label_set_text(view_balel, "VIEW: 1000");
+    lv_obj_align(view_balel, LV_ALIGN_BOTTOM_MID, 0, 0);
+    //--LIKE
+    lv_obj_t* like_scr = lv_obj_create(video_data);
+    lv_obj_set_grid_cell(like_scr, LV_GRID_ALIGN_STRETCH, 1, 1, LV_GRID_ALIGN_STRETCH, 0, 1);
+    lv_obj_set_style_pad_all(like_scr, 0, 0);
+    //---LIKE LVABEL
+    lv_obj_t* like_balel = lv_label_create(like_scr);
+    lv_label_set_text(like_balel, "LIKE: 1000");
+    lv_obj_align(like_balel, LV_ALIGN_BOTTOM_MID, 0, 0);
+    //--COIN
+    lv_obj_t* coin_scr = lv_obj_create(video_data);
+    lv_obj_set_grid_cell(coin_scr, LV_GRID_ALIGN_STRETCH, 0, 1, LV_GRID_ALIGN_STRETCH, 1, 1);
+    lv_obj_set_style_pad_all(coin_scr, 0, 0);
+    //---COIN LVABEL
+    lv_obj_t* coin_balel = lv_label_create(coin_scr);
+    lv_label_set_text(coin_balel, "COIN: 1000");
+    lv_obj_align(coin_balel, LV_ALIGN_BOTTOM_MID, 0, 0);
+    //--OTHER
+    lv_obj_t* other_scr = lv_obj_create(video_data);
+    lv_obj_set_grid_cell(other_scr, LV_GRID_ALIGN_STRETCH, 1, 1, LV_GRID_ALIGN_STRETCH, 1, 1);
+    lv_obj_set_style_pad_all(other_scr, 0, 0);
+    //---OTHER LVABEL
+    lv_obj_t* other_balel = lv_label_create(other_scr);
+    lv_label_set_text(other_balel, "OTHER: 1000");
+    lv_obj_align(other_balel, LV_ALIGN_BOTTOM_MID, 0, 0);
 
     // Botton
     lv_obj_t* Botton = lv_obj_create(grid);
@@ -486,7 +552,6 @@ HOMEPAGE_ARC_HEAD homePagee()
     //-CPU
     scr_cpu = lv_obj_create(bot_scr);
     lv_obj_set_grid_cell(scr_cpu, LV_GRID_ALIGN_STRETCH, 0, 1, LV_GRID_ALIGN_STRETCH, 0, 1);
-    lv_obj_set_style_bg_color(scr_cpu, lv_palette_main(LV_PALETTE_BLUE), 0);
     lv_obj_add_style(scr_cpu, &style_table, 0);
     lv_obj_set_style_pad_all(scr_cpu, 0, 0);
     create_arc_anim(scr_cpu, cpu);
