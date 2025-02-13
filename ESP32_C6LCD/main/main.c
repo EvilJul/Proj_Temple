@@ -20,6 +20,7 @@
 #include "freertos/semphr.h"
 #include "freertos/task.h"
 #include "idf_wifi.h"
+#include "lv_conf.h"
 #include "lvgl/lvgl.h"
 #include "lvgl_drv.h"
 #include "rgb_driver.h"
@@ -28,12 +29,11 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
-#include "lv_conf.h"
 
-void lvgl_task(void *Param);     // lvgl事件处理
-void hw_init(void *Param);       // 硬件初始化
-void splash_screen(void *Param); // 创建开机动画
-void led_rgb_disp(void *Param);  // LED呼吸闪烁
+void lvgl_task(void* Param);       // lvgl事件处理
+void hw_init(void* Param);         // 硬件初始化
+void splash_screen(void* Param);   // 创建开机动画
+void led_rgb_disp(void* Param);    // LED呼吸闪烁
 
 #define MAX_TRANSFER 4000
 #define PCLK (40 * 1000 * 1000)
@@ -45,18 +45,18 @@ void led_rgb_disp(void *Param);  // LED呼吸闪烁
 #define RESTART_TURE BIT1
 
 static ST7789_t st7789_cfg = {
-    .LCD_CLK_NUM = GPIO_NUM_7,
-    .LCD_MOSI_NUM = GPIO_NUM_6,
-    .LCD_MISO_NUM = GPIO_NUM_5,
-    .LCD_DC_NUM = GPIO_NUM_15,
-    .LCD_CS_NUM = GPIO_NUM_14,
-    .LCD_BL_NUM = GPIO_NUM_22,
-    .QUADWP_IO_NUM = -1,
-    .QUADHD_IO_NUM = -1,
+    .LCD_CLK_NUM     = GPIO_NUM_7,
+    .LCD_MOSI_NUM    = GPIO_NUM_6,
+    .LCD_MISO_NUM    = GPIO_NUM_5,
+    .LCD_DC_NUM      = GPIO_NUM_15,
+    .LCD_CS_NUM      = GPIO_NUM_14,
+    .LCD_BL_NUM      = GPIO_NUM_22,
+    .QUADWP_IO_NUM   = -1,
+    .QUADHD_IO_NUM   = -1,
     .MAX_TRANSFER_SZ = MAX_TRANSFER,
-    .PCLK_HZ = PCLK,
-    .LCD_CMD_BITS = 8,
-    .LCD_PARAM_BITS = 8,
+    .PCLK_HZ         = PCLK,
+    .LCD_CMD_BITS    = 8,
+    .LCD_PARAM_BITS  = 8,
 };
 static RGB_t rgb_cfg = {
     .pin_rgb = GPIO_NUM_8,
@@ -64,33 +64,31 @@ static RGB_t rgb_cfg = {
 };
 static HOMEPAGE_ARC_HEAD _arc_head;
 
-lv_obj_t *_splash_scr = NULL;
-static int progress_value = 5, temp_progress_value = 0;
+lv_obj_t*   _splash_scr    = NULL;
+static int  progress_value = 5, temp_progress_value = 0;
 static bool splash_scr_hid = false;
-char *init_name;
+char*       init_name;
 
 TaskHandle_t LVGL_TASK_HANDLE = NULL, HW_INIT = NULL, SPLASH_SCREEN = NULL, FPS_DISP = NULL,
              RESTART_ESP = NULL, FPS_UPDATE_VAL = NULL, LED_RGB_DISP = NULL, CPU_UPDATE_VAL = NULL;
 EventGroupHandle_t IP_EVENT_GROUP, RESTART_EVENT;
 
-char *name_init(char *name)
+char* name_init(char* name)
 {
-    init_name = (char *)realloc(NULL, 1 + strlen(name));
-    if (init_name == NULL)
-    {
+    init_name = (char*)realloc(NULL, 1 + strlen(name));
+    if (init_name == NULL) {
         fprintf(stderr, "Error: Failed to allocate memory.\n");
-        return NULL; // 返回一个空指针表示失败
+        return NULL;   // 返回一个空指针表示失败
     }
     strncpy(init_name, name, strlen(name) + 1);
 
     return init_name;
 }
 
-void netif_ip_event(void *event_handler_arg, esp_event_base_t event_base, int32_t event_id,
-                    void *event_data)
+void netif_ip_event(void* event_handler_arg, esp_event_base_t event_base, int32_t event_id,
+                    void* event_data)
 {
-    switch (event_id)
-    {
+    switch (event_id) {
     case IP_EVENT_STA_GOT_IP:
         xEventGroupSetBits(IP_EVENT_GROUP, GOT_IP);
         progress_value += 5;
@@ -99,27 +97,23 @@ void netif_ip_event(void *event_handler_arg, esp_event_base_t event_base, int32_
         free(init_name);
         break;
 
-    default:
-        break;
+    default: break;
     }
 }
 
-void lvgl_task(void *Param)
+void lvgl_task(void* Param)
 {
-    while (1)
-    {
+    while (1) {
         lv_task_handler();
 
-        if (splash_scr_hid)
-        {
-            if (_splash_scr != NULL && lv_obj_is_valid(_splash_scr))
-            {
-                _arc_head = homePagee();
+        if (splash_scr_hid) {
+            if (_splash_scr != NULL && lv_obj_is_valid(_splash_scr)) {
+                _arc_head      = homePagee();
                 splash_scr_hid = false;
 
                 vTaskDelete(SPLASH_SCREEN);
                 SPLASH_SCREEN = NULL;
-                _splash_scr = NULL;
+                _splash_scr   = NULL;
             }
         }
 
@@ -127,16 +121,15 @@ void lvgl_task(void *Param)
     }
 }
 
-void led_rgb_disp(void *Param)
+void led_rgb_disp(void* Param)
 {
-    while (1)
-    {
+    while (1) {
         breath_effect(88, 245, &rgb_cfg);
         vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
 
-void hw_init(void *Param)
+void hw_init(void* Param)
 {
     esp_err_t err;
     temp_progress_value = progress_value;
@@ -165,8 +158,7 @@ void hw_init(void *Param)
     xTaskCreate(led_rgb_disp, "led_rgb_disp", 1024 * 4, NULL, 2, &LED_RGB_DISP);
 
     err = wifi_sta_model_init();
-    if (err != ESP_OK)
-        xEventGroupSetBits(RESTART_EVENT, RESTART_TURE);
+    if (err != ESP_OK) xEventGroupSetBits(RESTART_EVENT, RESTART_TURE);
     progress_value += 5;
     temp_progress_value = progress_value;
     splash_anim_update(temp_progress_value, progress_value, name_init("WIFI init..."));
@@ -174,8 +166,7 @@ void hw_init(void *Param)
     esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, netif_ip_event, NULL);
 
     err = wifi_connect(SSID, PASSWD, -1);
-    if (err != ESP_OK)
-        xEventGroupSetBits(RESTART_EVENT, RESTART_TURE);
+    if (err != ESP_OK) xEventGroupSetBits(RESTART_EVENT, RESTART_TURE);
     progress_value += 5;
     temp_progress_value = progress_value;
     splash_anim_update(temp_progress_value, progress_value, name_init("Connecting"));
@@ -185,8 +176,7 @@ void hw_init(void *Param)
 
     sntp_init_zh();
     err = syn_time();
-    if (err != ESP_OK)
-        xEventGroupSetBits(RESTART_EVENT, RESTART_TURE);
+    if (err != ESP_OK) xEventGroupSetBits(RESTART_EVENT, RESTART_TURE);
     progress_value += 5;
     temp_progress_value = progress_value;
     splash_anim_update(temp_progress_value, progress_value, name_init("TIME INIT..."));
@@ -199,11 +189,9 @@ void hw_init(void *Param)
     free(init_name);
     splash_scr_hid = true;
 
-    while (1)
-    {
+    while (1) {
         err = syn_time();
-        while (err != ESP_OK)
-        {
+        while (err != ESP_OK) {
             err = syn_time();
             vTaskDelay(pdMS_TO_TICKS(10));
         }
@@ -212,23 +200,21 @@ void hw_init(void *Param)
     }
 }
 
-void splash_screen(void *Param)
+void splash_screen(void* Param)
 {
     _splash_scr = splash_anim();
 
-    while (1)
-    {
+    while (1) {
         vTaskDelay(pdMS_TO_TICKS(1));
     }
 }
 
-void restart_esp(void *param)
+void restart_esp(void* param)
 {
     xEventGroupWaitBits(RESTART_EVENT, RESTART_TURE, pdTRUE, pdTRUE, portMAX_DELAY);
     esp_restart();
 
-    while (1)
-    {
+    while (1) {
         vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
@@ -237,7 +223,7 @@ void app_main(void)
 {
     esp_err_t err;
     IP_EVENT_GROUP = xEventGroupCreate();
-    RESTART_EVENT = xEventGroupCreate();
+    RESTART_EVENT  = xEventGroupCreate();
 
     lv_init();
     nvs_init();
@@ -249,21 +235,18 @@ void app_main(void)
     // }
     SD_Init();
     err = st7789_hw_init(&st7789_cfg);
-    if (err != ESP_OK)
-    {
+    if (err != ESP_OK) {
         ESP_LOGE("ERROR", "启动失败！%s", esp_err_to_name(err));
         return;
     }
     err = lv_disp_init();
-    if (err != ESP_OK)
-    {
+    if (err != ESP_OK) {
         ESP_LOGE("ERROR", "启动失败！%s", esp_err_to_name(err));
         return;
     }
     BK_Light(10);
     err = lv_timer();
-    if (err != ESP_OK)
-    {
+    if (err != ESP_OK) {
         ESP_LOGE("ERROR", "启动失败！%s", esp_err_to_name(err));
         return;
     }
