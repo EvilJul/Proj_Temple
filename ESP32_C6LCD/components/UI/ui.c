@@ -3,6 +3,7 @@
 #include "esp_wifi.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
+#include "http_client.h"
 #include "lvgl/lvgl.h"
 #include "lvgl_drv.h"
 #include "ui.h"
@@ -17,43 +18,46 @@
 #    define my_sleep(ms) usleep(ms * 1000)
 #endif
 
+typedef struct
+{
+    lv_obj_t* view_obj;
+    lv_obj_t* like_obj;
+    lv_obj_t* coin_obj;
+    lv_obj_t* reply_obj;
+} LV_LABEL_OBJ;
 
 // 全局变量
-static lv_obj_t* splash_scr         = NULL;
-static lv_obj_t* splash_bar         = NULL;
-static lv_obj_t* splash_label       = NULL;
-static lv_obj_t* splash_label_per   = NULL;
-static lv_obj_t* temp_label_for_top = NULL;
-// static lv_obj_t*  home               = NULL;
-static lv_obj_t* scr_cpu   = NULL;
-static lv_obj_t* scr_fps   = NULL;
-static lv_obj_t* label_cpu = NULL;
-static lv_obj_t* label_fps = NULL;
-static lv_obj_t* arc_cpu   = NULL;
-static lv_obj_t* arc_fps   = NULL;
-// static uint32_t   last_frame_time    = 0;
-static int        fps         = 0;
-static int        cpu         = 0;
-static time_t     now         = 0;
-struct tm         time_info   = {0};
-const int         retry_count = 10;
-static int        wifi_rssi;
-static char       temp_rssi[10];
-static lv_style_t splash_font_style;
-static lv_style_t name_font_style;
-static lv_style_t top_font;
-static char       time_buf[20];
-static char*      temp;
+static lv_obj_t*      splash_scr         = NULL;
+static lv_obj_t*      splash_bar         = NULL;
+static lv_obj_t*      splash_label       = NULL;
+static lv_obj_t*      splash_label_per   = NULL;
+static lv_obj_t*      temp_label_for_top = NULL;
+static lv_obj_t*      scr_cpu            = NULL;
+static lv_obj_t*      scr_fps            = NULL;
+static lv_obj_t*      label_cpu          = NULL;
+static lv_obj_t*      label_fps          = NULL;
+static lv_obj_t*      arc_cpu            = NULL;
+static lv_obj_t*      arc_fps            = NULL;
+static int            fps                = 0;
+static int            cpu                = 0;
+static time_t         now                = 0;
+struct tm             time_info          = {0};
+const int             retry_count        = 10;
+static int            wifi_rssi;
+static char           temp_rssi[10];
+static lv_style_t     splash_font_style;
+static lv_style_t     name_font_style;
+static lv_style_t     top_font;
+static char           time_buf[20];
+static JSON_CONV_BL_t response_data_conv;
+static LV_LABEL_OBJ   label_timer_cb_obj;
 
 char* init_char_name(char* name)
 {
-    // 初始化字符串
-    // char* temp;
-    // temp    = malloc(1);
-    // temp[0] = '\0';
+    char* temp = NULL;
+    temp       = realloc(temp, 1 + strlen(name));
+    if (temp == NULL) return NULL;
 
-    // 重新分配空间
-    temp = realloc(temp, 1 + strlen(name));
     strncpy(temp, name, strlen(name) + 1);
 
     return temp;
@@ -125,6 +129,14 @@ void anim_bar_cb(void* var, int32_t v)
 
 //     return fps_label;
 // }
+
+/**
+ * @brief 获取开机加载的数据
+ */
+void get_start_data(JSON_CONV_BL_t data)
+{
+    response_data_conv = data;
+}
 
 /**
  * @brief 更新进度条
@@ -394,6 +406,38 @@ void update_time(struct _lv_timer_t* t)
 }
 
 /**
+ * @brief 定时发送http请求
+ */
+void http_get_data(struct _lv_timer_t* var)
+{
+    char* response_data = http_client_init_get(URL);
+    if (response_data != NULL) {
+        memset(&response_data_conv, 0, sizeof(response_data_conv));
+        response_data_conv = bl_json_data_conversion(response_data);
+    }
+
+    char* text_view  = NULL;
+    char* text_coin  = NULL;
+    char* text_like  = NULL;
+    char* text_reply = NULL;
+
+    asprintf(&text_view, "VIEW: %d", response_data_conv.view);
+    asprintf(&text_coin, "COIN: %d", response_data_conv.coin);
+    asprintf(&text_like, "LIKE: %d", response_data_conv.like);
+    asprintf(&text_reply, "REPLY: %d", response_data_conv.reply);
+
+    lv_label_set_text(label_timer_cb_obj.view_obj, text_view);
+    lv_label_set_text(label_timer_cb_obj.coin_obj, text_coin);
+    lv_label_set_text(label_timer_cb_obj.like_obj, text_like);
+    lv_label_set_text(label_timer_cb_obj.reply_obj, text_reply);
+
+    free(text_reply);
+    free(text_like);
+    free(text_coin);
+    free(text_view);
+}
+
+/**
  * @brief 加载主页
  */
 HOMEPAGE_ARC_HEAD homePagee()
@@ -468,7 +512,7 @@ HOMEPAGE_ARC_HEAD homePagee()
     lv_obj_set_layout(Media, LV_LAYOUT_GRID);
     lv_obj_set_grid_dsc_array(Media, media_col, media_row);
     lv_obj_set_size(Media, 170, 170);
-    // ID
+    //  ID
     lv_obj_t* bili_name_scr = lv_obj_create(Media);
     lv_obj_set_grid_cell(bili_name_scr, LV_GRID_ALIGN_STRETCH, 0, 1, LV_GRID_ALIGN_STRETCH, 0, 1);
     lv_obj_set_style_pad_all(bili_name_scr, 0, 0);
@@ -497,13 +541,23 @@ HOMEPAGE_ARC_HEAD homePagee()
     lv_obj_set_grid_dsc_array(video_data, video_col, video_row);
     lv_obj_set_style_pad_all(video_data, 0, 0);
     lv_obj_set_style_pad_gap(video_data, 0, 0);
+    // 处理开机请求数据
+    memset(&response_data_conv, 0, sizeof(response_data_conv));
+    char* text_view  = NULL;
+    char* text_coin  = NULL;
+    char* text_like  = NULL;
+    char* text_reply = NULL;
+    asprintf(&text_view, "VIEW: %d", response_data_conv.view);
+    asprintf(&text_coin, "COIN: %d", response_data_conv.coin);
+    asprintf(&text_like, "LIKE: %d", response_data_conv.like);
+    asprintf(&text_reply, "REPLY: %d", response_data_conv.reply);
     //--VIEW
     lv_obj_t* view_scr = lv_obj_create(video_data);
     lv_obj_set_grid_cell(view_scr, LV_GRID_ALIGN_STRETCH, 0, 1, LV_GRID_ALIGN_STRETCH, 0, 1);
     lv_obj_set_style_pad_all(view_scr, 0, 0);
     //---VIEW LVABEL
     lv_obj_t* view_balel = lv_label_create(view_scr);
-    lv_label_set_text(view_balel, "VIEW: 1000");
+    lv_label_set_text(view_balel, text_view);
     lv_obj_align(view_balel, LV_ALIGN_BOTTOM_MID, 0, 0);
     //--LIKE
     lv_obj_t* like_scr = lv_obj_create(video_data);
@@ -511,7 +565,7 @@ HOMEPAGE_ARC_HEAD homePagee()
     lv_obj_set_style_pad_all(like_scr, 0, 0);
     //---LIKE LVABEL
     lv_obj_t* like_balel = lv_label_create(like_scr);
-    lv_label_set_text(like_balel, "LIKE: 1000");
+    lv_label_set_text(like_balel, text_like);
     lv_obj_align(like_balel, LV_ALIGN_BOTTOM_MID, 0, 0);
     //--COIN
     lv_obj_t* coin_scr = lv_obj_create(video_data);
@@ -519,16 +573,26 @@ HOMEPAGE_ARC_HEAD homePagee()
     lv_obj_set_style_pad_all(coin_scr, 0, 0);
     //---COIN LVABEL
     lv_obj_t* coin_balel = lv_label_create(coin_scr);
-    lv_label_set_text(coin_balel, "COIN: 1000");
+    lv_label_set_text(coin_balel, text_coin);
     lv_obj_align(coin_balel, LV_ALIGN_BOTTOM_MID, 0, 0);
-    //--OTHER
+    //--REPLY
     lv_obj_t* other_scr = lv_obj_create(video_data);
     lv_obj_set_grid_cell(other_scr, LV_GRID_ALIGN_STRETCH, 1, 1, LV_GRID_ALIGN_STRETCH, 1, 1);
     lv_obj_set_style_pad_all(other_scr, 0, 0);
-    //---OTHER LVABEL
-    lv_obj_t* other_balel = lv_label_create(other_scr);
-    lv_label_set_text(other_balel, "OTHER: 1000");
-    lv_obj_align(other_balel, LV_ALIGN_BOTTOM_MID, 0, 0);
+    //---REPLY LVABEL
+    lv_obj_t* reply_balel = lv_label_create(other_scr);
+    lv_label_set_text(reply_balel, text_reply);
+    lv_obj_align(reply_balel, LV_ALIGN_BOTTOM_MID, 0, 0);
+    // 创建定时函数
+    label_timer_cb_obj.coin_obj  = coin_balel;
+    label_timer_cb_obj.like_obj  = like_balel;
+    label_timer_cb_obj.reply_obj = reply_balel;
+    label_timer_cb_obj.view_obj  = view_balel;
+    lv_timer_create(http_get_data, 1000 * 60 * 0.5, NULL);
+    free(text_reply);
+    free(text_like);
+    free(text_coin);
+    free(text_view);
 
     // Botton
     lv_obj_t* Botton = lv_obj_create(grid);

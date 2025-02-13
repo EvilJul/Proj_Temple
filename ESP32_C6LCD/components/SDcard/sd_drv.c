@@ -12,7 +12,7 @@
 static uint32_t sd_size;
 
 sdspi_dev_handle_t SD_DEV_HANDLE;
-sdmmc_card_t *SDCARD;
+sdmmc_card_t*      SDCARD;
 
 /**
  * @brief 配置SPI
@@ -30,34 +30,32 @@ esp_err_t init_sd_spi()
     // // 配置SPI总线
     ESP_LOGI("SPI_INFO", "----->配置SPI总线<------");
     spi_bus_config_t bus_cfg = {
-        .sclk_io_num = GPIO_NUM_7,
-        .mosi_io_num = GPIO_NUM_6,
-        .miso_io_num = GPIO_NUM_5,
-        .quadwp_io_num = -1,
-        .quadhd_io_num = -1,
+        .sclk_io_num     = GPIO_NUM_7,
+        .mosi_io_num     = GPIO_NUM_6,
+        .miso_io_num     = GPIO_NUM_5,
+        .quadwp_io_num   = -1,
+        .quadhd_io_num   = -1,
         .max_transfer_sz = 4000,
     };
     err = spi_bus_initialize(sdmmc_host_.slot, &bus_cfg, SPI_DMA_CH_AUTO);
-    if (err != ESP_OK)
-    {
+    if (err != ESP_OK) {
         ESP_LOGE("SPI_INFO", "初始化LCD SPI总线失败！");
         return err;
     }
 
     sdspi_device_config_t sdspi_dev_cfg = SDSPI_DEVICE_CONFIG_DEFAULT();
-    sdspi_dev_cfg.gpio_cs = SD_CS;
-    sdspi_dev_cfg.host_id = sdmmc_host_.slot;
+    sdspi_dev_cfg.gpio_cs               = SD_CS;
+    sdspi_dev_cfg.host_id               = sdmmc_host_.slot;
 
     // 挂载sd卡
     ESP_LOGI("SD_INFO", "----->进行挂载SD卡<------");
     esp_vfs_fat_sdmmc_mount_config_t mount_cfg = {
-        .max_files = 5,
+        .max_files              = 5,
         .format_if_mount_failed = true,
-        .allocation_unit_size = 16 * 1024,
+        .allocation_unit_size   = 16 * 1024,
     };
     err = esp_vfs_fat_sdspi_mount(MOUNT_POINT, &sdmmc_host_, &sdspi_dev_cfg, &mount_cfg, &SDCARD);
-    if (err != ESP_OK)
-    {
+    if (err != ESP_OK) {
         ESP_LOGE("SD_INFO", "SD挂载失败！");
         return err;
     }
@@ -79,11 +77,11 @@ void SD_Init()
     // when mounting fails.  false true
     esp_vfs_fat_sdmmc_mount_config_t mount_config = {
         .format_if_mount_failed = true,
-        .max_files = 5,
-        .allocation_unit_size = 16 * 1024,
+        .max_files              = 5,
+        .allocation_unit_size   = 16 * 1024,
     };
-    sdmmc_card_t *card;
-    const char mount_point[] = MOUNT_POINT;
+    sdmmc_card_t* card;
+    const char    mount_point[] = MOUNT_POINT;
     ESP_LOGI("SD_INFO", "Initializing SD card");
 
     // Use settings defined above to initialize SD card and mount FAT filesystem.
@@ -98,16 +96,15 @@ void SD_Init()
     sdmmc_host_t host = SDSPI_HOST_DEFAULT();
 
     spi_bus_config_t bus_cfg = {
-        .mosi_io_num = GPIO_NUM_6,
-        .miso_io_num = GPIO_NUM_5,
-        .sclk_io_num = GPIO_NUM_7,
-        .quadwp_io_num = -1,
-        .quadhd_io_num = -1,
+        .mosi_io_num     = GPIO_NUM_6,
+        .miso_io_num     = GPIO_NUM_5,
+        .sclk_io_num     = GPIO_NUM_7,
+        .quadwp_io_num   = -1,
+        .quadhd_io_num   = -1,
         .max_transfer_sz = 4000,
     };
     ret = spi_bus_initialize(host.slot, &bus_cfg, SDSPI_DEFAULT_DMA);
-    if (ret != ESP_OK)
-    {
+    if (ret != ESP_OK) {
         ESP_LOGE("SD_INFO", "Failed to initialize SPI bus.");
         return;
     }
@@ -115,23 +112,20 @@ void SD_Init()
     // This initializes the slot without card detect (CD) and write protect (WP) signals.
     // Modify slot_config.gpio_cd and slot_config.gpio_wp if your board has these signals.
     sdspi_device_config_t slot_config = SDSPI_DEVICE_CONFIG_DEFAULT();
-    slot_config.gpio_cs = SD_CS;
-    slot_config.host_id = host.slot;
+    slot_config.gpio_cs               = SD_CS;
+    slot_config.host_id               = host.slot;
 
     ESP_LOGI("SD_INFO", "Mounting filesystem");
     ret = esp_vfs_fat_sdspi_mount(mount_point, &host, &slot_config, &mount_config, &card);
 
-    if (ret != ESP_OK)
-    {
-        if (ret == ESP_FAIL)
-        {
+    if (ret != ESP_OK) {
+        if (ret == ESP_FAIL) {
             ESP_LOGE("SD_INFO",
                      "Failed to mount filesystem. "
                      "If you want the card to be formatted, set the "
                      "CONFIG_EXAMPLE_FORMAT_IF_MOUNT_FAILED menuconfig option.");
         }
-        else
-        {
+        else {
             ESP_LOGE("SD_INFO",
                      "Failed to initialize the card (%s). "
                      "Make sure SD card lines have pull-up resistors in place.",
@@ -145,4 +139,41 @@ void SD_Init()
     sdmmc_card_print_info(stdout, card);
     sd_size = ((uint64_t)card->csd.capacity) * card->csd.sector_size / (1024 * 1024 * 1024);
     ESP_LOGI("SD_INFO", "SD卡大小: %ld GB", sd_size);
+}
+
+esp_err_t sd_write_file(const char* path, char* data)
+{
+    ESP_LOGI("SD_INFO", "Opening file %s", path);
+    FILE* f = fopen(path, "w");
+    if (f == NULL) {
+        ESP_LOGE("SD_INFO", "写入文件失败！");
+        return ESP_FAIL;
+    }
+    fprintf(f, data);
+    fclose(f);
+    ESP_LOGI("SD_INFO", "File written");
+
+    return ESP_OK;
+}
+
+esp_err_t sd_read_file(const char* path)
+{
+    ESP_LOGI("SD_INFO", "Reading file %s", path);
+    FILE* f = fopen(path, "r");
+    if (f == NULL) {
+        ESP_LOGE("SD_INFO", "Failed to open file for reading");
+        return ESP_FAIL;
+    }
+    char line[1024 * 512];
+    fgets(line, sizeof(line), f);
+    fclose(f);
+
+    // strip newline
+    char* pos = strchr(line, '\n');
+    if (pos) {
+        *pos = '\0';
+    }
+    ESP_LOGI("SD_INFO", "Read from file: '%s'", line);
+
+    return ESP_OK;
 }

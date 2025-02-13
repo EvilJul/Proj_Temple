@@ -401,8 +401,8 @@
 
 /*Optionally declare custom fonts here.
  *You can use these fonts as default font too and they will be available globally.
- *E.g. #define LV_FONT_CUSTOM_DECLARE   LV_FONT_DECLARE(my_font_1) LV_FONT_DECLARE(my_font_2)*/
-#define LV_FONT_CUSTOM_DECLARE
+ *E.g. #define LV_FONT_CUSTOM_DECLARE  LV_FONT_DECLARE(w02) LV_FONT_DECLARE(my_font_2)*/
+#define LV_FONT_CUSTOM_DECLARE 
 
 /*Always set a default font*/
 #define LV_FONT_DEFAULT &lv_font_montserrat_14
@@ -615,7 +615,7 @@
 /*File system interfaces for common APIs */
 
 /*API for fopen, fread, etc*/
-#define LV_USE_FS_STDIO 0
+#define LV_USE_FS_STDIO 1
 #if LV_USE_FS_STDIO
     #define LV_FS_STDIO_LETTER '\0'     /*Set an upper cased letter on which the drive will accessible (e.g. 'A')*/
     #define LV_FS_STDIO_PATH ""         /*Set the working directory. File/directory paths will be appended to it.*/

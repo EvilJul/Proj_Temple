@@ -1,2 +1,4 @@
 ESP32_C6LCD/components/lvgl
 ESP32_C6LCD/build
+bilibili_dsp/build
+ble_basic/build

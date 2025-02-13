@@ -15,10 +15,12 @@
 
 #include "esp_err.h"
 #include "esp_log.h"
+#include "ffconf.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
+#include "http_client.h"
 #include "idf_wifi.h"
 #include "lv_conf.h"
 #include "lvgl/lvgl.h"
@@ -70,7 +72,7 @@ static bool splash_scr_hid = false;
 char*       init_name;
 
 TaskHandle_t LVGL_TASK_HANDLE = NULL, HW_INIT = NULL, SPLASH_SCREEN = NULL, FPS_DISP = NULL,
-             RESTART_ESP = NULL, FPS_UPDATE_VAL = NULL, LED_RGB_DISP = NULL, CPU_UPDATE_VAL = NULL;
+             RESTART_ESP = NULL, LED_RGB_DISP = NULL;
 EventGroupHandle_t IP_EVENT_GROUP, RESTART_EVENT;
 
 char* name_init(char* name)
@@ -182,7 +184,23 @@ void hw_init(void* Param)
     splash_anim_update(temp_progress_value, progress_value, name_init("TIME INIT..."));
     free(init_name);
 
-    // BLE初始化
+    char* resp_data     = http_client_init_get(URL);
+    temp_progress_value = progress_value;
+    splash_anim_update(temp_progress_value, progress_value, name_init("GET RESPONSE..."));
+    free(init_name);
+    if (resp_data == NULL) {
+        splash_anim_update(temp_progress_value, progress_value, name_init("GET DATA FALI..."));
+        free(init_name);
+    }
+    else {
+        JSON_CONV_BL_t bl_data = bl_json_data_conversion(resp_data);
+        get_start_data(bl_data);
+        temp_progress_value = progress_value;
+        splash_anim_update(temp_progress_value, progress_value, name_init("CONVERSION DATA..."));
+        free(init_name);
+    }
+
+    // BLE功能没有添加
 
     progress_value = 100;
     splash_anim_update(temp_progress_value, progress_value, name_init("FINISH..."));

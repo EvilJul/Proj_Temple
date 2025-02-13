@@ -2,6 +2,9 @@
   "idf.flashType": "UART",
   "idf.port": "/dev/tty.usbserial-0001",
   "files.associations": {
-    "*.bak3": "cpp"
+    "*.bak3": "cpp",
+    "ssd1306.h": "c",
+    "idf_wifi.h": "c",
+    "cjson.h": "c"
   }
 }

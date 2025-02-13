@@ -1,6 +1,9 @@
 #ifndef _UI_H_
 #define _UI_H_
 
+// bilibili请求URL
+#define URL "https://api.bilibili.com/x/web-interface/view?bvid=BV17xfWYnENz"
+
 // 自定义结构体来扩展动画信息，添加旧屏幕指针
 typedef struct
 {
@@ -50,6 +53,11 @@ esp_err_t syn_time();
  * @brief 初始化snt事件服务器
  */
 void sntp_init_zh();
+
+/**
+ * @brief 获取开机加载的数据
+ */
+void get_start_data(JSON_CONV_BL_t data);
 
 //  * @brief FPS值计算
 //  */

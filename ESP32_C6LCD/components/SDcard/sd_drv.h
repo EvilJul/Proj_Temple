@@ -11,13 +11,26 @@
 // #define SD_SCLK GPIO_NUM_7
 
 /**
- * @brief 配置SPI
- * @param cfg 和LCD公用引脚参数
+ * @brief 配置SPI并挂载SD卡(有些问题好像)
  * @return 初始化是否成功，成功返回ESP_OK
  */
 esp_err_t init_sd_spi();
 
-
+/**
+ * @brief 配置SPI并挂载SD卡
+ * @return 初始化是否成功，成功返回ESP_OK
+ */
 void SD_Init();
+
+/**
+ * @brief 读取SD卡文件
+ */
+esp_err_t sd_read_file(const char* path);
+
+
+/**
+ * @brief 向SD写入文件
+ */
+esp_err_t sd_write_file(const char* path, char* data);
 
 #endif

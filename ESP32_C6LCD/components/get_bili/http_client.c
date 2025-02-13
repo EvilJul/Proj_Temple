@@ -4,6 +4,8 @@
 #include "esp_netif.h"
 #include "freertos/event_groups.h"
 #include "http_client.h"
+#include <cJSON.h>
+#include <string.h>
 
 #define TAG "HTTP_CLIENT"
 #define CLIENT_TIMEOUT 50000
@@ -19,6 +21,11 @@
 
 EventGroupHandle_t HTTP_CLIENT_EVENT = NULL;
 // asm根据自己证书名字进行更改bilibili_ca_cert_pem-->bilibili.ca.cert.pem
+/*
+macOS命令行生成官方证书：
+    echo -n | openssl s_client -showcerts -connect www.bilibili.com:443 2>/dev/null | sed -ne
+    '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > bilibili_official.pem
+ */
 extern const uint8_t bilibili_pem_start[] asm("_binary_bilibili_ca_cert_pem_start");
 extern const uint8_t bilibili_pem_end[] asm("_binary_bilibili_ca_cert_pem_end");
 static int           request_attempts = 0;      // 重新连接尝试次数
@@ -98,6 +105,11 @@ char* http_client_init_get(char* url)
         .auth_type             = HTTP_AUTH_TYPE_NONE,
         .cert_pem              = (const char*)bilibili_pem_start,
     };
+    esp_http_client_handle_t http_client = esp_http_client_init(&http_client_config);
+    if (http_client == NULL) {
+        ESP_LOGE(TAG, "http-client初始化失败!");
+        return NULL;
+    }
 
     // 清空缓冲区
     http_data_buf = malloc(1);   // 初始化为空字符串
@@ -109,28 +121,70 @@ char* http_client_init_get(char* url)
     http_data_len    = 0;
 
     while (request_attempts < 4) {
-        esp_http_client_handle_t http_client = esp_http_client_init(&http_client_config);
-        if (http_client == NULL) {
-            ESP_LOGE(TAG, "http-client初始化失败!");
-            return NULL;
-        }
-
         esp_err_t err = esp_http_client_perform(http_client);
         if (err == ESP_OK) {
-            // 请求成功
             esp_http_client_cleanup(http_client);
+            request_attempts = 0;
             return http_data_buf;   // 返回接收到的数据
         }
         else {
-            // 请求失败
             ESP_LOGE(TAG, "http-client数据交互失败！");
-            esp_http_client_cleanup(http_client);
             request_attempts++;
             ESP_LOGI(TAG, "正在尝试第%d次请求", request_attempts);
-            vTaskDelay(pdMS_TO_TICKS(1000));   // 等待1秒后重试
+            vTaskDelay(pdMS_TO_TICKS(2000));   // 等待2秒后重试
         }
     }
 
-    ESP_LOGE(TAG, "请求超时！");
+    esp_http_client_cleanup(http_client);
+    request_attempts = 0;
+    ESP_LOGE(TAG, "获取数据失败");
     return NULL;   // 返回NULL表示请求失败
+}
+
+/**
+ * @brief Json 格式数据处理(bilibili)
+ * @param json_data传入Json字符串
+ * @return 返回处理后的数据
+ */
+JSON_CONV_BL_t bl_json_data_conversion(char* data)
+{
+    JSON_CONV_BL_t response_data_canver;
+    memset(&response_data_canver, 0, sizeof(response_data_canver));
+
+    cJSON* json_parent = cJSON_Parse(*(char**)data);
+    if (json_parent == NULL) {
+        ESP_LOGE("JSON_CONV_INFO", "Error to conversion data:%s \n", cJSON_GetErrorPtr());
+        response_data_canver.coin  = 0;
+        response_data_canver.like  = 0;
+        response_data_canver.view  = 0;
+        response_data_canver.reply = 0;
+        response_data_canver.title = '\0';
+    }
+    else {
+        ESP_LOGI("JSON_CONVER_INFO", "处理后的JSON数据：\n %s", cJSON_Print(json_parent));
+        free(cJSON_Print(json_parent));
+
+        cJSON* bl_data = cJSON_GetObjectItem(json_parent, "data");
+        if (bl_data != NULL) {
+            cJSON* title               = cJSON_GetObjectItem(bl_data, "title");
+            response_data_canver.title = cJSON_Print(title);
+
+            cJSON* stat = cJSON_GetObjectItem(json_parent, "stat");
+            if (stat != NULL) {
+                response_data_canver.coin = cJSON_GetNumberValue(cJSON_GetObjectItem(stat, "coin"));
+                response_data_canver.like = cJSON_GetNumberValue(cJSON_GetObjectItem(stat, "like"));
+                response_data_canver.view = cJSON_GetNumberValue(cJSON_GetObjectItem(stat, "view"));
+                response_data_canver.reply =
+                    cJSON_GetNumberValue(cJSON_GetObjectItem(stat, "reply"));
+            }
+            else {
+                response_data_canver.coin  = 0;
+                response_data_canver.like  = 0;
+                response_data_canver.view  = 0;
+                response_data_canver.reply = 0;
+            }
+        }
+    }
+
+    return response_data_canver;
 }
