@@ -1,4 +1,4 @@
-set(srcs "ui.c")
+set(srcs "ui.c" "coin.c" "like.c" "reply.c" "view.c" "wifi.c")
 
 idf_component_register(
     SRCS "${srcs}"

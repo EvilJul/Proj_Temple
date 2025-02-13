@@ -23,9 +23,12 @@ EventGroupHandle_t HTTP_CLIENT_EVENT = NULL;
 // asm根据自己证书名字进行更改bilibili_ca_cert_pem-->bilibili.ca.cert.pem
 /*
 macOS命令行生成官方证书：
-    echo -n | openssl s_client -showcerts -connect www.bilibili.com:443 2>/dev/null | sed -ne
-    '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > bilibili_official.pem
- */
+    echo -n | openssl s_client -showcerts -connect www.bilibili.com:443 2>/dev/null | sed
+-ne'/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > bilibili.ca.cert.pem
+
+    openssl s_client -connect www.bilibili.com:443 -showcerts </dev/null 2>/dev/null | openssl
+x509 -outform PEM > bilibili.ca.cert.pem
+    */
 extern const uint8_t bilibili_pem_start[] asm("_binary_bilibili_ca_cert_pem_start");
 extern const uint8_t bilibili_pem_end[] asm("_binary_bilibili_ca_cert_pem_end");
 static int           request_attempts = 0;      // 重新连接尝试次数
@@ -151,7 +154,7 @@ JSON_CONV_BL_t bl_json_data_conversion(char* data)
     JSON_CONV_BL_t response_data_canver;
     memset(&response_data_canver, 0, sizeof(response_data_canver));
 
-    cJSON* json_parent = cJSON_Parse(*(char**)data);
+    cJSON* json_parent = cJSON_Parse(data);
     if (json_parent == NULL) {
         ESP_LOGE("JSON_CONV_INFO", "Error to conversion data:%s \n", cJSON_GetErrorPtr());
         response_data_canver.coin  = 0;

@@ -1,12 +1,17 @@
+#include "coin.c"
 #include "esp_log.h"
 #include "esp_sntp.h"
 #include "esp_wifi.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "http_client.h"
+#include "like.c"
 #include "lvgl/lvgl.h"
 #include "lvgl_drv.h"
+#include "reply.c"
 #include "ui.h"
+#include "view.c"
+#include "wifi.c"
 #include <assert.h>
 #include <string.h>
 #include <time.h>
@@ -46,7 +51,6 @@ const int             retry_count        = 10;
 static int            wifi_rssi;
 static char           temp_rssi[10];
 static lv_style_t     splash_font_style;
-static lv_style_t     name_font_style;
 static lv_style_t     top_font;
 static char           time_buf[20];
 static JSON_CONV_BL_t response_data_conv;
@@ -229,7 +233,17 @@ lv_obj_t* splash_anim()
 /**
  * @brief 设置背景图片
  */
-void bg_img() {}
+lv_obj_t* bg_img(lv_obj_t* scr, lv_coord_t w, lv_coord_t h, void* src)
+{
+    // 创建一个图片
+    lv_obj_t* img = lv_img_create(scr);
+    // 设置图片源
+    lv_img_set_src(img, src);
+    // 设置图片为大小
+    lv_obj_set_size(img, w, h);
+
+    return img;
+}
 
 void update_arc_anim(lv_obj_t* arc, int32_t value, bool isfps, char* flag1, char* flag2,
                      lv_obj_t* label)
@@ -421,10 +435,10 @@ void http_get_data(struct _lv_timer_t* var)
     char* text_like  = NULL;
     char* text_reply = NULL;
 
-    asprintf(&text_view, "VIEW: %d", response_data_conv.view);
-    asprintf(&text_coin, "COIN: %d", response_data_conv.coin);
-    asprintf(&text_like, "LIKE: %d", response_data_conv.like);
-    asprintf(&text_reply, "REPLY: %d", response_data_conv.reply);
+    asprintf(&text_view, "VIEW:\n%d", response_data_conv.view);
+    asprintf(&text_coin, "COIN:\n%d", response_data_conv.coin);
+    asprintf(&text_like, "LIKE:\n%d", response_data_conv.like);
+    asprintf(&text_reply, "REPLY:\n%d", response_data_conv.reply);
 
     lv_label_set_text(label_timer_cb_obj.view_obj, text_view);
     lv_label_set_text(label_timer_cb_obj.coin_obj, text_coin);
@@ -469,7 +483,6 @@ HOMEPAGE_ARC_HEAD homePagee()
     lv_obj_set_grid_dsc_array(grid, col_dsc, row_dsc);   // 将之前定义的列和行描述符应用到网格对象上
     lv_obj_set_style_pad_all(grid, 0, 0);
 
-
     // Top
     lv_obj_t* Top = lv_obj_create(grid);
     lv_obj_set_grid_cell(Top, LV_GRID_ALIGN_STRETCH, 0, 1, LV_GRID_ALIGN_STRETCH, 0, 1);
@@ -500,6 +513,7 @@ HOMEPAGE_ARC_HEAD homePagee()
     lv_label_set_text(rssi_label, temp_rssi);
     lv_timer_create(update_time, 1000, time_label);
     memset(temp_rssi, 0, sizeof(temp_rssi));
+    lv_obj_align(bg_img(Top, 30, 30, &wifi), LV_ALIGN_RIGHT_MID, -60, 0);
 
     // Media
     lv_obj_t* Media = lv_obj_create(grid);
@@ -528,11 +542,15 @@ HOMEPAGE_ARC_HEAD homePagee()
     lv_label_set_text(name_label, "DA CHAI");
     lv_obj_move_foreground(name_label);
 
+    // Style
+    lv_style_t data_table_style;
+    lv_style_init(&data_table_style);
+    lv_style_set_bg_opa(&data_table_style, LV_OPA_TRANSP);
     // DATA
     lv_obj_t* video_data = lv_obj_create(Media);
     lv_obj_set_grid_cell(video_data, LV_GRID_ALIGN_STRETCH, 0, 1, LV_GRID_ALIGN_STRETCH, 1, 1);
     lv_obj_set_style_pad_all(video_data, 0, 0);
-    lv_obj_set_style_bg_color(video_data, lv_palette_main(LV_PALETTE_CYAN), 0);
+    lv_obj_add_style(video_data, &style_table, 0);
     //-DATA TABLE
     static lv_coord_t video_col[] = {82, 82, LV_GRID_TEMPLATE_LAST};
     static lv_coord_t video_row[] = {68, 68, LV_GRID_TEMPLATE_LAST};
@@ -547,42 +565,52 @@ HOMEPAGE_ARC_HEAD homePagee()
     char* text_coin  = NULL;
     char* text_like  = NULL;
     char* text_reply = NULL;
-    asprintf(&text_view, "VIEW: %d", response_data_conv.view);
-    asprintf(&text_coin, "COIN: %d", response_data_conv.coin);
-    asprintf(&text_like, "LIKE: %d", response_data_conv.like);
-    asprintf(&text_reply, "REPLY: %d", response_data_conv.reply);
+    asprintf(&text_view, "VIEW:\n%d", response_data_conv.view);
+    asprintf(&text_coin, "COIN:\n%d", response_data_conv.coin);
+    asprintf(&text_like, "LIKE:\n%d", response_data_conv.like);
+    asprintf(&text_reply, "REPLY:\n%d", response_data_conv.reply);
     //--VIEW
     lv_obj_t* view_scr = lv_obj_create(video_data);
     lv_obj_set_grid_cell(view_scr, LV_GRID_ALIGN_STRETCH, 0, 1, LV_GRID_ALIGN_STRETCH, 0, 1);
     lv_obj_set_style_pad_all(view_scr, 0, 0);
+    lv_obj_align(bg_img(view_scr, 50, 50, &view), LV_ALIGN_CENTER, 0, -10);
     //---VIEW LVABEL
     lv_obj_t* view_balel = lv_label_create(view_scr);
     lv_label_set_text(view_balel, text_view);
     lv_obj_align(view_balel, LV_ALIGN_BOTTOM_MID, 0, 0);
+    // lv_obj_add_style(view_scr, &data_table_style, LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(view_scr, lv_palette_main(LV_PALETTE_CYAN), 0);
     //--LIKE
     lv_obj_t* like_scr = lv_obj_create(video_data);
     lv_obj_set_grid_cell(like_scr, LV_GRID_ALIGN_STRETCH, 1, 1, LV_GRID_ALIGN_STRETCH, 0, 1);
     lv_obj_set_style_pad_all(like_scr, 0, 0);
+    lv_obj_align(bg_img(like_scr, 50, 50, &like), LV_ALIGN_CENTER, 0, -10);
     //---LIKE LVABEL
     lv_obj_t* like_balel = lv_label_create(like_scr);
     lv_label_set_text(like_balel, text_like);
     lv_obj_align(like_balel, LV_ALIGN_BOTTOM_MID, 0, 0);
+    lv_obj_add_style(like_scr, &data_table_style, LV_STATE_DEFAULT);
     //--COIN
     lv_obj_t* coin_scr = lv_obj_create(video_data);
     lv_obj_set_grid_cell(coin_scr, LV_GRID_ALIGN_STRETCH, 0, 1, LV_GRID_ALIGN_STRETCH, 1, 1);
+    lv_obj_align(bg_img(coin_scr, 50, 50, &coin), LV_ALIGN_CENTER, 0, -10);
     lv_obj_set_style_pad_all(coin_scr, 0, 0);
     //---COIN LVABEL
     lv_obj_t* coin_balel = lv_label_create(coin_scr);
     lv_label_set_text(coin_balel, text_coin);
     lv_obj_align(coin_balel, LV_ALIGN_BOTTOM_MID, 0, 0);
+    lv_obj_add_style(coin_scr, &data_table_style, LV_STATE_DEFAULT);
     //--REPLY
-    lv_obj_t* other_scr = lv_obj_create(video_data);
-    lv_obj_set_grid_cell(other_scr, LV_GRID_ALIGN_STRETCH, 1, 1, LV_GRID_ALIGN_STRETCH, 1, 1);
-    lv_obj_set_style_pad_all(other_scr, 0, 0);
+    lv_obj_t* reply_scr = lv_obj_create(video_data);
+    lv_obj_set_grid_cell(reply_scr, LV_GRID_ALIGN_STRETCH, 1, 1, LV_GRID_ALIGN_STRETCH, 1, 1);
+    lv_obj_set_style_pad_all(reply_scr, 0, 0);
+    lv_obj_align(bg_img(reply_scr, 50, 50, &reply), LV_ALIGN_CENTER, 0, -10);
     //---REPLY LVABEL
-    lv_obj_t* reply_balel = lv_label_create(other_scr);
+    lv_obj_t* reply_balel = lv_label_create(reply_scr);
     lv_label_set_text(reply_balel, text_reply);
     lv_obj_align(reply_balel, LV_ALIGN_BOTTOM_MID, 0, 0);
+    // lv_obj_add_style(reply_scr, &data_table_style, LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(reply_scr, lv_palette_main(LV_PALETTE_CYAN), 0);
     // 创建定时函数
     label_timer_cb_obj.coin_obj  = coin_balel;
     label_timer_cb_obj.like_obj  = like_balel;
