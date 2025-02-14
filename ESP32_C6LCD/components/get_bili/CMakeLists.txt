@@ -5,5 +5,6 @@ idf_component_register(
     PRIV_REQUIRES   esp_http_client
                     esp_netif
                     json
+                    mbedtls
     INCLUDE_DIRS "."
     EMBED_TXTFILES "bilibili_ca_cert.pem")

@@ -2,7 +2,7 @@
   "C_Cpp.intelliSenseEngine": "default",
   "idf.espIdfPath": "/Users/tian/esp/v5.4/esp-idf",
   "idf.openOcdConfigs": ["board/esp32c6-lpcore-builtin.cfg"],
-  "idf.port": "/dev/tty.usbmodem23101",
+  "idf.port": "/dev/tty.usbmodem1101",
   "idf.toolsPath": "/Users/tian/.espressif",
   "files.associations": {
     "spi_master.h": "c",

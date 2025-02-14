@@ -4,6 +4,7 @@
 #include "esp_netif.h"
 #include "freertos/event_groups.h"
 #include "http_client.h"
+#include "mbedtls/debug.h"
 #include <cJSON.h>
 #include <string.h>
 
@@ -97,6 +98,9 @@ esp_err_t http_client_event(esp_http_client_event_t* evt)
 char* http_client_init_get(char* url)
 {
     if (HTTP_CLIENT_EVENT == NULL) HTTP_CLIENT_EVENT = xEventGroupCreate();
+    // ESP_LOGI("DEBUG", "Certificate: %s", (const char*)bilibili_pem_start);
+    ESP_LOGE("DEBUG", "Free heap: %d", heap_caps_get_free_size(MALLOC_CAP_8BIT));
+    mbedtls_debug_set_threshold(3);
 
     esp_http_client_config_t http_client_config = {
         .url                   = url,
@@ -187,6 +191,13 @@ JSON_CONV_BL_t bl_json_data_conversion(char* data)
                 response_data_canver.reply = 0;
             }
         }
+    }
+
+    // 释放内存
+    if (http_data_buf) {
+        free(http_data_buf);
+        http_data_buf = NULL;
+        http_data_len = 0;
     }
 
     return response_data_canver;

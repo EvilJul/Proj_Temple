@@ -513,7 +513,7 @@ HOMEPAGE_ARC_HEAD homePagee()
     lv_label_set_text(rssi_label, temp_rssi);
     lv_timer_create(update_time, 1000, time_label);
     memset(temp_rssi, 0, sizeof(temp_rssi));
-    lv_obj_align(bg_img(Top, 30, 30, &wifi), LV_ALIGN_RIGHT_MID, -60, 0);
+    lv_obj_align(bg_img(Top, 30, 30, &wifi), LV_ALIGN_RIGHT_MID, -20, -3);
 
     // Media
     lv_obj_t* Media = lv_obj_create(grid);
@@ -573,7 +573,7 @@ HOMEPAGE_ARC_HEAD homePagee()
     lv_obj_t* view_scr = lv_obj_create(video_data);
     lv_obj_set_grid_cell(view_scr, LV_GRID_ALIGN_STRETCH, 0, 1, LV_GRID_ALIGN_STRETCH, 0, 1);
     lv_obj_set_style_pad_all(view_scr, 0, 0);
-    lv_obj_align(bg_img(view_scr, 50, 50, &view), LV_ALIGN_CENTER, 0, -10);
+    lv_obj_align(bg_img(view_scr, 50, 50, &view), LV_ALIGN_TOP_MID, 0, -10);
     //---VIEW LVABEL
     lv_obj_t* view_balel = lv_label_create(view_scr);
     lv_label_set_text(view_balel, text_view);
@@ -584,7 +584,7 @@ HOMEPAGE_ARC_HEAD homePagee()
     lv_obj_t* like_scr = lv_obj_create(video_data);
     lv_obj_set_grid_cell(like_scr, LV_GRID_ALIGN_STRETCH, 1, 1, LV_GRID_ALIGN_STRETCH, 0, 1);
     lv_obj_set_style_pad_all(like_scr, 0, 0);
-    lv_obj_align(bg_img(like_scr, 50, 50, &like), LV_ALIGN_CENTER, 0, -10);
+    lv_obj_align(bg_img(like_scr, 50, 50, &like), LV_ALIGN_TOP_MID, 0, -10);
     //---LIKE LVABEL
     lv_obj_t* like_balel = lv_label_create(like_scr);
     lv_label_set_text(like_balel, text_like);
@@ -593,7 +593,7 @@ HOMEPAGE_ARC_HEAD homePagee()
     //--COIN
     lv_obj_t* coin_scr = lv_obj_create(video_data);
     lv_obj_set_grid_cell(coin_scr, LV_GRID_ALIGN_STRETCH, 0, 1, LV_GRID_ALIGN_STRETCH, 1, 1);
-    lv_obj_align(bg_img(coin_scr, 50, 50, &coin), LV_ALIGN_CENTER, 0, -10);
+    lv_obj_align(bg_img(coin_scr, 50, 50, &coin), LV_ALIGN_TOP_MID, 0, -10);
     lv_obj_set_style_pad_all(coin_scr, 0, 0);
     //---COIN LVABEL
     lv_obj_t* coin_balel = lv_label_create(coin_scr);
@@ -604,7 +604,7 @@ HOMEPAGE_ARC_HEAD homePagee()
     lv_obj_t* reply_scr = lv_obj_create(video_data);
     lv_obj_set_grid_cell(reply_scr, LV_GRID_ALIGN_STRETCH, 1, 1, LV_GRID_ALIGN_STRETCH, 1, 1);
     lv_obj_set_style_pad_all(reply_scr, 0, 0);
-    lv_obj_align(bg_img(reply_scr, 50, 50, &reply), LV_ALIGN_CENTER, 0, -10);
+    lv_obj_align(bg_img(reply_scr, 50, 50, &reply), LV_ALIGN_TOP_MID, 0, -10);
     //---REPLY LVABEL
     lv_obj_t* reply_balel = lv_label_create(reply_scr);
     lv_label_set_text(reply_balel, text_reply);
@@ -616,7 +616,7 @@ HOMEPAGE_ARC_HEAD homePagee()
     label_timer_cb_obj.like_obj  = like_balel;
     label_timer_cb_obj.reply_obj = reply_balel;
     label_timer_cb_obj.view_obj  = view_balel;
-    lv_timer_create(http_get_data, 1000 * 60 * 0.5, NULL);
+    lv_timer_create(http_get_data, 1000 * 60 * 15, NULL);
     free(text_reply);
     free(text_like);
     free(text_coin);
