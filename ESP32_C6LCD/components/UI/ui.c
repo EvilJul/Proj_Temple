@@ -560,7 +560,7 @@ HOMEPAGE_ARC_HEAD homePagee()
     lv_obj_set_style_pad_all(video_data, 0, 0);
     lv_obj_set_style_pad_gap(video_data, 0, 0);
     // 处理开机请求数据
-    memset(&response_data_conv, 0, sizeof(response_data_conv));
+    // memset(&response_data_conv, 0, sizeof(response_data_conv));
     char* text_view  = NULL;
     char* text_coin  = NULL;
     char* text_like  = NULL;

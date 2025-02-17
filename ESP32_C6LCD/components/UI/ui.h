@@ -2,7 +2,7 @@
 #define _UI_H_
 
 // bilibili请求URL
-#define URL "https://api.bilibili.com/x/web-interface/view?bvid=BV17xfWYnENz"
+#define URL "https://api.bilibili.com/x/web-interface/view?bvid=BV1gQAweoE6X"
 
 // 自定义结构体来扩展动画信息，添加旧屏幕指针
 typedef struct

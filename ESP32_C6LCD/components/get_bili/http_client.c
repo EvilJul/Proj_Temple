@@ -53,14 +53,13 @@ esp_err_t http_client_event(esp_http_client_event_t* evt)
         memcpy(http_data_buf + http_data_len, evt->data, evt->data_len);
         http_data_len += evt->data_len;
         http_data_buf[http_data_len] = '\0';   // 添加字符串结束符
-        // printf("Received data: %s\n", http_data_buf);
         break;
 
     // 当请求完成时触发
     case HTTP_EVENT_ON_FINISH:
         printf("Request finished\n");
         xEventGroupSetBits(HTTP_CLIENT_EVENT, HTTP_CLIENT_EVENT_FINESH);
-        printf("finifsh data: %s\n", http_data_buf);
+        // printf("finifsh data: %s\n", http_data_buf);
         break;
 
     // 当发生错误时触发
@@ -99,8 +98,8 @@ char* http_client_init_get(char* url)
 {
     if (HTTP_CLIENT_EVENT == NULL) HTTP_CLIENT_EVENT = xEventGroupCreate();
     // ESP_LOGI("DEBUG", "Certificate: %s", (const char*)bilibili_pem_start);
-    ESP_LOGE("DEBUG", "Free heap: %d", heap_caps_get_free_size(MALLOC_CAP_8BIT));
-    mbedtls_debug_set_threshold(3);
+    // ESP_LOGE("DEBUG", "Free heap: %d", heap_caps_get_free_size(MALLOC_CAP_8BIT));
+    // mbedtls_debug_set_threshold(3);
 
     esp_http_client_config_t http_client_config = {
         .url                   = url,
@@ -176,7 +175,7 @@ JSON_CONV_BL_t bl_json_data_conversion(char* data)
             cJSON* title               = cJSON_GetObjectItem(bl_data, "title");
             response_data_canver.title = cJSON_Print(title);
 
-            cJSON* stat = cJSON_GetObjectItem(json_parent, "stat");
+            cJSON* stat = cJSON_GetObjectItem(bl_data, "stat");
             if (stat != NULL) {
                 response_data_canver.coin = cJSON_GetNumberValue(cJSON_GetObjectItem(stat, "coin"));
                 response_data_canver.like = cJSON_GetNumberValue(cJSON_GetObjectItem(stat, "like"));
