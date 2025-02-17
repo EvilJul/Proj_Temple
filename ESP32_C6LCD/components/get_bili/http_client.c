@@ -142,6 +142,12 @@ char* http_client_init_get(char* url)
     }
 
     esp_http_client_cleanup(http_client);
+    // 释放内存
+    if (http_data_buf) {
+        free(http_data_buf);
+        http_data_buf = NULL;
+        http_data_len = 0;
+    }
     request_attempts = 0;
     ESP_LOGE(TAG, "获取数据失败");
     return NULL;   // 返回NULL表示请求失败
@@ -192,12 +198,12 @@ JSON_CONV_BL_t bl_json_data_conversion(char* data)
         }
     }
 
-    // 释放内存
-    if (http_data_buf) {
-        free(http_data_buf);
-        http_data_buf = NULL;
-        http_data_len = 0;
-    }
+    // // 释放内存
+    // if (http_data_buf) {
+    //     free(http_data_buf);
+    //     http_data_buf = NULL;
+    //     http_data_len = 0;
+    // }
 
     return response_data_canver;
 }
