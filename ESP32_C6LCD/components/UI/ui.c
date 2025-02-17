@@ -531,10 +531,6 @@ HOMEPAGE_ARC_HEAD homePagee()
     lv_obj_set_grid_cell(bili_name_scr, LV_GRID_ALIGN_STRETCH, 0, 1, LV_GRID_ALIGN_STRETCH, 0, 1);
     lv_obj_set_style_pad_all(bili_name_scr, 0, 0);
     lv_obj_set_style_bg_color(bili_name_scr, lv_palette_main(LV_PALETTE_ORANGE), 0);
-    //-ID STYLE
-    // lv_style_init(&name_font_style);
-    // lv_style_set_text_color(&name_font_style, lv_palette_main(LV_PALETTE_RED));
-    // lv_style_set_text_opa(&name_font_style, LV_OPA_30);
     //-ID LABEL
     lv_obj_t* name_label = lv_label_create(bili_name_scr);
     lv_obj_align(name_label, LV_ALIGN_CENTER, 0, 0);

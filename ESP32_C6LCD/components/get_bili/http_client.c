@@ -180,6 +180,7 @@ JSON_CONV_BL_t bl_json_data_conversion(char* data)
         if (bl_data != NULL) {
             cJSON* title               = cJSON_GetObjectItem(bl_data, "title");
             response_data_canver.title = cJSON_Print(title);
+            free(cJSON_Print(title));
 
             cJSON* stat = cJSON_GetObjectItem(bl_data, "stat");
             if (stat != NULL) {
@@ -197,13 +198,6 @@ JSON_CONV_BL_t bl_json_data_conversion(char* data)
             }
         }
     }
-
-    // // 释放内存
-    // if (http_data_buf) {
-    //     free(http_data_buf);
-    //     http_data_buf = NULL;
-    //     http_data_len = 0;
-    // }
 
     return response_data_canver;
 }
