@@ -136,6 +136,12 @@ char* http_client_init_get(char* url)
         else {
             ESP_LOGE(TAG, "http-client数据交互失败！");
             request_attempts++;
+            // 释放内存
+            if (http_data_buf) {
+                free(http_data_buf);
+                http_data_buf = NULL;
+                http_data_len = 0;
+            }
             ESP_LOGI(TAG, "正在尝试第%d次请求", request_attempts);
             vTaskDelay(pdMS_TO_TICKS(2000));   // 等待2秒后重试
         }
@@ -150,6 +156,7 @@ char* http_client_init_get(char* url)
     }
     request_attempts = 0;
     ESP_LOGE(TAG, "获取数据失败");
+
     return NULL;   // 返回NULL表示请求失败
 }
 
@@ -197,6 +204,13 @@ JSON_CONV_BL_t bl_json_data_conversion(char* data)
                 response_data_canver.reply = 0;
             }
         }
+    }
+
+    // 释放内存
+    if (http_data_buf) {
+        free(http_data_buf);
+        http_data_buf = NULL;
+        http_data_len = 0;
     }
 
     return response_data_canver;
