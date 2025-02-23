@@ -1,4 +1,14 @@
 ESP32_C6LCD/components/lvgl
 ESP32_C6LCD/build
+ESP32_C6LCD/.devcontainer
+ESP32_C6LCD/.vscode
+
 bilibili_dsp/build
+bilibili_dsp/.devcontainer
+bilibili_dsp/.vscode
+
 ble_basic/build
+ble_basic/.devcontainer
+ble_basic/.vscode
+
+

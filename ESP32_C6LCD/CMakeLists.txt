@@ -16,5 +16,6 @@ set(
     "components/UI"
     "components/SDcard"
     )
+# set(ESXTRA_COMPONENTS_DIRS "components/.")
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(ESP32_C6LCD)

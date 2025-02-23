@@ -1,0 +1,6 @@
+description: ESP-BSP SquareLine LVGL Example
+targets:
+  - esp32c6
+dependencies:
+  idf: ">=5.4"
+  esp_wrover_kit: "^1.0.0"
