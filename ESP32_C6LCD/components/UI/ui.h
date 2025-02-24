@@ -1,6 +1,8 @@
 #ifndef _UI_H_
 #define _UI_H_
 
+#include "esp_err.h"
+#include "http_client.h"
 #include "lvgl/lvgl.h"
 
 // bilibili请求URL

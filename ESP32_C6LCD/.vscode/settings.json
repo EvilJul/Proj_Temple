@@ -2,7 +2,7 @@
   "C_Cpp.intelliSenseEngine": "default",
   "idf.espIdfPath": "/Users/tian/esp/v5.4/esp-idf",
   "idf.openOcdConfigs": ["board/esp32c6-lpcore-builtin.cfg"],
-  "idf.port": "/dev/tty.usbmodem1101",
+  "idf.port": "/dev/tty.usbmodem24201",
   "idf.toolsPath": "/Users/tian/.espressif",
   "files.associations": {
     "spi_master.h": "c",
@@ -45,7 +45,8 @@
     "lv_refr.h": "c",
     "lv_conf.h": "c",
     "ffconf.h": "c",
-    "cjson.h": "c"
+    "cjson.h": "c",
+    "ui.h": "c"
   },
   "idf.flashType": "UART"
 }

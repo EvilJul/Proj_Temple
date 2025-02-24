@@ -95,7 +95,7 @@ void netif_ip_event(void* event_handler_arg, esp_event_base_t event_base, int32_
         xEventGroupSetBits(IP_EVENT_GROUP, GOT_IP);
         progress_value += 5;
         temp_progress_value = progress_value;
-        splash_anim_update(temp_progress_value, progress_value, name_init("GOT IP..."));
+        splash_anim_update(temp_progress_value, progress_value, name_init("获取IP..."));
         free(init_name);
         break;
 
@@ -136,26 +136,26 @@ void hw_init(void* Param)
     esp_err_t err;
     temp_progress_value = progress_value;
     progress_value += 5;
-    splash_anim_update(temp_progress_value, progress_value, name_init("NVS init..."));
-    splash_anim_update(temp_progress_value, progress_value, name_init("LVGL init..."));
+    splash_anim_update(temp_progress_value, progress_value, name_init("初始化NVS..."));
+    splash_anim_update(temp_progress_value, progress_value, name_init("初始化LVGL..."));
     free(init_name);
     progress_value += 5;
     temp_progress_value = progress_value;
-    splash_anim_update(temp_progress_value, progress_value, name_init("SPI init..."));
+    splash_anim_update(temp_progress_value, progress_value, name_init("初始化SPI..."));
     free(init_name);
     progress_value += 5;
     temp_progress_value = progress_value;
-    splash_anim_update(temp_progress_value, progress_value, name_init("SD init..."));
+    splash_anim_update(temp_progress_value, progress_value, name_init("初始化SD..."));
     free(init_name);
     progress_value += 5;
     temp_progress_value = progress_value;
-    splash_anim_update(temp_progress_value, progress_value, name_init("LCD init..."));
+    splash_anim_update(temp_progress_value, progress_value, name_init("初始化LCD..."));
     free(init_name);
 
     setup_leds(&rgb_cfg);
     progress_value += 5;
     temp_progress_value = progress_value;
-    splash_anim_update(temp_progress_value, progress_value, name_init("RGB init..."));
+    splash_anim_update(temp_progress_value, progress_value, name_init("初始化RGB..."));
     free(init_name);
     xTaskCreate(led_rgb_disp, "led_rgb_disp", 1024 * 4, NULL, 2, &LED_RGB_DISP);
 
@@ -163,7 +163,7 @@ void hw_init(void* Param)
     if (err != ESP_OK) xEventGroupSetBits(RESTART_EVENT, RESTART_TURE);
     progress_value += 5;
     temp_progress_value = progress_value;
-    splash_anim_update(temp_progress_value, progress_value, name_init("WIFI init..."));
+    splash_anim_update(temp_progress_value, progress_value, name_init("初始化WIFI..."));
     free(init_name);
     esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, netif_ip_event, NULL);
 
@@ -171,7 +171,7 @@ void hw_init(void* Param)
     if (err != ESP_OK) xEventGroupSetBits(RESTART_EVENT, RESTART_TURE);
     progress_value += 5;
     temp_progress_value = progress_value;
-    splash_anim_update(temp_progress_value, progress_value, name_init("Connecting"));
+    splash_anim_update(temp_progress_value, progress_value, name_init("连接WiFi"));
     free(init_name);
 
     xEventGroupWaitBits(IP_EVENT_GROUP, GOT_IP, pdTRUE, pdTRUE, portMAX_DELAY);
@@ -181,15 +181,15 @@ void hw_init(void* Param)
     if (err != ESP_OK) xEventGroupSetBits(RESTART_EVENT, RESTART_TURE);
     progress_value += 5;
     temp_progress_value = progress_value;
-    splash_anim_update(temp_progress_value, progress_value, name_init("TIME INIT..."));
+    splash_anim_update(temp_progress_value, progress_value, name_init("更新时间..."));
     free(init_name);
 
     char* resp_data     = http_client_init_get(URL);
     temp_progress_value = progress_value;
-    splash_anim_update(temp_progress_value, progress_value, name_init("GET RESPONSE..."));
+    splash_anim_update(temp_progress_value, progress_value, name_init("获取数据..."));
     free(init_name);
     if (resp_data == NULL) {
-        splash_anim_update(temp_progress_value, progress_value, name_init("GET DATA FALI..."));
+        splash_anim_update(temp_progress_value, progress_value, name_init("获取数据失败..."));
         free(init_name);
     }
     else {
@@ -202,14 +202,14 @@ void hw_init(void* Param)
                  bl_data.view);
         get_start_data(bl_data);
         temp_progress_value = progress_value;
-        splash_anim_update(temp_progress_value, progress_value, name_init("CONVERSION DATA..."));
+        splash_anim_update(temp_progress_value, progress_value, name_init("处理数据..."));
         free(init_name);
     }
 
     // BLE功能没有添加
 
     progress_value = 100;
-    splash_anim_update(temp_progress_value, progress_value, name_init("FINISH..."));
+    splash_anim_update(temp_progress_value, progress_value, name_init("完成..."));
     free(init_name);
     splash_scr_hid = true;
 
