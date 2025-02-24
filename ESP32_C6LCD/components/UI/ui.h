@@ -1,6 +1,8 @@
 #ifndef _UI_H_
 #define _UI_H_
 
+#include "lvgl/lvgl.h"
+
 // bilibili请求URL
 #define URL "https://api.bilibili.com/x/web-interface/view?bvid=BV1gQAweoE6X"
 
