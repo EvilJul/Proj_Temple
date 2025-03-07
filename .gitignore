@@ -11,4 +11,7 @@ ble_basic/build
 ble_basic/.devcontainer
 ble_basic/.vscode
 
+firewral/.idea
+firewral/.env
 
+.DS_Store
