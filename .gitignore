@@ -6,6 +6,7 @@ ESP32_C6LCD/.vscode
 bilibili_dsp/build
 bilibili_dsp/.devcontainer
 bilibili_dsp/.vscode
+bilibili_dsp/components/http_client_v0.2/bilibili_ca_cert.pem
 
 ble_basic/build
 ble_basic/.devcontainer
@@ -15,3 +16,4 @@ firewral/.idea
 firewral/.env
 
 .DS_Store
+.idea
